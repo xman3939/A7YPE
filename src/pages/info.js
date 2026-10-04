@@ -121,13 +121,11 @@ function buildColorSection() {
 }
 
 const THANKS = Array(8).fill('Lorem ipsum');
-// placeholder hrefs — real destinations (issue tracker, portfolio work
-// page, about page, LinkedIn profile) to be filled in later
 const LINKS = [
   { label: 'Support', href: 'mailto:xavierkania1222@gmail.com' },
-  { label: 'Other work', href: '#' },
-  { label: 'About', href: '#' },
-  { label: 'LinkedIn', href: '#' },
+  { label: 'Other work', href: 'https://xavierkania.com/work' },
+  { label: 'About', href: 'https://xavierkania.com/about' },
+  { label: 'LinkedIn', href: 'https://www.linkedin.com/in/xman3939/' },
 ];
 
 function accordionRow(title, text) {

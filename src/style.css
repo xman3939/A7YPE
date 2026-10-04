@@ -778,6 +778,19 @@ body.page-game .options-row {
   }
 }
 
+/* Sound Effects/Music — locked to Disabled, not clickable (no listener
+   wired up in chrome.js), and deliberately NOT hoverable either: cancels
+   the slide above so hovering them does nothing at all, unlike every
+   other option here. "Currently unavailable" is a plain title= tooltip
+   (native browser behavior), not a custom hover reveal. */
+.option--toggle.is-locked:hover .option-value .roll-inner {
+  transform: none;
+}
+
+.option--toggle.is-locked {
+  cursor: not-allowed;
+}
+
 .option-label {
   font-size: 16px;
   opacity: 0.6;

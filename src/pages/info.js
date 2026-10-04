@@ -241,7 +241,7 @@ let markObserver = null;
 let resizeHandler = null;
 
 export default {
-  title: 'Info',
+  title: 'INFO',
   bodyClass: 'page-info',
   render() {
     return `

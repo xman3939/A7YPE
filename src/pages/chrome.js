@@ -11,18 +11,19 @@ const menuItems = [
 const MENU_ITEM_START = 200;
 const MENU_ITEM_GAP = 120;
 
-// Sound Effects/Music have no real system behind them yet (no sounds
-// exist to enable/disable) — these just persist the player's preference
-// so whatever audio system eventually gets built can read it from the
-// start, rather than everyone defaulting to silent until they happen to
-// flip it. Fullscreen/Cursor have no such gap — both are real, working
-// toggles already.
+// Sound Effects/Music have no real system behind them at all yet — no
+// audio exists to enable/disable, so unlike Fullscreen/Cursor (real,
+// working toggles) these are locked to Disabled and non-clickable for
+// now, with the hover line explaining why rather than just repeating
+// "Disabled" back. Once an actual sound system exists, this goes back
+// to a real toggle — not deleting the localStorage plumbing below since
+// it'll be exactly what that flip needs.
 const SOUND_KEY = 'site-sound-effects-enabled';
 const MUSIC_KEY = 'site-music-enabled';
 
 function getSoundEnabled() {
   const stored = localStorage.getItem(SOUND_KEY);
-  return stored === null ? true : stored === 'true';
+  return stored === null ? false : stored === 'true';
 }
 
 function setSoundEnabled(value) {
@@ -31,7 +32,7 @@ function setSoundEnabled(value) {
 
 function getMusicEnabled() {
   const stored = localStorage.getItem(MUSIC_KEY);
-  return stored === null ? true : stored === 'true';
+  return stored === null ? false : stored === 'true';
 }
 
 function setMusicEnabled(value) {
@@ -78,8 +79,13 @@ export function isDesktop() {
   return window.matchMedia('(min-width: 769px)').matches;
 }
 
-export function roll(text) {
-  return `<span class="roll"><span class="roll-inner"><span class="roll-line">${text}</span><span class="roll-line" aria-hidden="true">${text}</span></span></span>`;
+// hoverText defaults to text (every existing call site just sees the
+// same line slide up to reveal an identical copy) — passing a different
+// hoverText lets a specific roll show something else on hover instead,
+// e.g. Sound Effects/Music revealing "Currently Unavailable" rather than
+// just repeating "Disabled".
+export function roll(text, hoverText = text) {
+  return `<span class="roll"><span class="roll-inner"><span class="roll-line">${text}</span><span class="roll-line" aria-hidden="true">${hoverText}</span></span></span>`;
 }
 
 // footerHTML lets a page (currently only /info) swap out the standard
@@ -106,8 +112,8 @@ export function renderChrome(innerHTML, footerHTML) {
       ${footerHTML ?? `
         <footer class="infobar">
           <div class="options-row">
-            <button type="button" class="option option--toggle" data-option="sound"><span class="option-label">${roll('Sound Effects:')}</span><span class="option-value">${roll(getSoundEnabled() ? 'Enabled' : 'Disabled')}</span></button>
-            <button type="button" class="option option--toggle" data-option="music"><span class="option-label">${roll('Music:')}</span><span class="option-value">${roll(getMusicEnabled() ? 'Enabled' : 'Disabled')}</span></button>
+            <button type="button" class="option option--toggle is-locked" data-option="sound" aria-disabled="true" title="Currently unavailable"><span class="option-label">${roll('Sound Effects:')}</span><span class="option-value">${roll('Disabled')}</span></button>
+            <button type="button" class="option option--toggle is-locked" data-option="music" aria-disabled="true" title="Currently unavailable"><span class="option-label">${roll('Music:')}</span><span class="option-value">${roll('Disabled')}</span></button>
             <button type="button" class="option option--toggle" data-option="fullscreen"><span class="option-label">${roll('Fullscreen:')}</span><span class="option-value">${roll(isFullscreenActive() ? 'Enabled' : 'Disabled')}</span></button>
             <button type="button" class="option option--toggle" data-option="cursor"><span class="option-label">${roll('Cursor:')}</span><span class="option-value">${roll(getCursorStyle() === 'arrow' ? 'Arrow' : 'Crosshair')}</span></button>
           </div>
@@ -190,17 +196,10 @@ export function initChrome({ instant = false } = {}) {
     });
   }
 
-  const soundOption = document.querySelector('[data-option="sound"]');
-  soundOption?.addEventListener('click', () => {
-    setSoundEnabled(!getSoundEnabled());
-    setOptionValueText(soundOption, getSoundEnabled() ? 'Enabled' : 'Disabled');
-  });
-
-  const musicOption = document.querySelector('[data-option="music"]');
-  musicOption?.addEventListener('click', () => {
-    setMusicEnabled(!getMusicEnabled());
-    setOptionValueText(musicOption, getMusicEnabled() ? 'Enabled' : 'Disabled');
-  });
+  // Sound Effects/Music are locked to Disabled right now (no real audio
+  // system to toggle yet) — deliberately no click listener at all, so
+  // they're inert; the hover still works (see roll()'s hoverText above),
+  // just doesn't lead anywhere.
 
   const fullscreenOption = document.querySelector('[data-option="fullscreen"]');
   function updateFullscreenValue() {

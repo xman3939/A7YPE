@@ -120,7 +120,7 @@ function buildColorSection() {
   `;
 }
 
-const THANKS = Array(8).fill('Lorem ipsum');
+const THANKS = ['GERM', 'YOSEPH', 'RAMZI', 'EK', 'LEXI', 'Lorem ipsum', 'Lorem ipsum', 'Lorem ipsum'];
 const LINKS = [
   { label: 'Support', href: 'mailto:xavierkania1222@gmail.com' },
   { label: 'Other work', href: 'https://xavierkania.com/work' },

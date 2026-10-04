@@ -1,3 +1,70 @@
+/* quick test: Space Mono swap — pulled from Google Fonts rather than
+   self-hosted since this is just an experiment, not a committed change */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('./assets/fonts/space-grotesk-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('./assets/fonts/space-grotesk-latin-500-normal.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('./assets/fonts/space-grotesk-latin-700-normal.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* brand palette: orange/black/white replaces the old red/dark/white one */
+  /* quick test swap — was #ff4830 */
+  --orange: #faff62;
+  /* was #151515 — lightened */
+  --black: #272727;
+  /* was #eeeeee, then #f5f5f5 */
+  --white: #f8f8f8;
+  /* experiment: play-screen bg only, replacing --orange there — white
+     standout text (.play-item.is-red) has almost no contrast against the
+     new yellow accent, medium gray fixes that without touching the rest
+     of the palette. Lighter than a true middle gray. */
+  --gray: #cacaca;
+  /* every real route overrides this via its own body class the instant
+     it mounts (see router.js) — this default is never actually seen on
+     a real page. It only matters for the split-second before any class
+     exists at all, on cold load, before main.js has even run — and for
+     whatever sliver mobile Safari's own chrome doesn't cover. Black
+     blends into that chrome (its own UI is dark) wherever bright orange
+     stood out against it. */
+  --bg: var(--black);
+  --ink: var(--black);
+  /* quick test swap — was 'Space Grotesk', Helvetica, Arial, sans-serif.
+     Space Mono only ships 400/700 (no 500) — the site's several
+     font-weight:500 usages will fall back to the nearest available
+     weight rather than a true medium. */
+  --font: 'Space Mono', 'Courier New', monospace;
+  --gutter: clamp(16px, 4vw, 24px);
+  --mark-inset: var(--gutter);
+  --chrome-h: 170px; /* approx combined topbar + footer height, used to size .mark so it can't overflow */
+}
+
+body.page-home,
+body.page-game,
+body.page-info {
+  --bg: var(--black);
+  --ink: var(--white);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -5,57 +72,2526 @@
 html,
 body {
   margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  position: fixed;
+  inset: 0;
   width: 100%;
-  min-height: 100%;
+  height: 100%;
+}
+
+/* buttons don't reliably inherit text-transform (and some typographic
+   properties in general) from ancestors the way normal elements do — this
+   is why "Learn more" (a <button>, unlike the <a>-tag CTAs) wasn't
+   picking up uppercase */
+button {
+  text-transform: inherit;
 }
 
 body {
-  font-family: Helvetica, Arial, sans-serif;
-  background: #111;
-  color: #fff;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--ink);
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cline x1='12' y1='1' x2='12' y2='23' stroke='%23eeeeee' stroke-width='2'/%3E%3Cline x1='1' y1='12' x2='23' y2='12' stroke='%23eeeeee' stroke-width='2'/%3E%3C/svg%3E") 12 12, crosshair;
 }
 
 #app {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .page {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+}
+
+.frame {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.nav {
+.topbar {
   display: flex;
-  gap: 20px;
-  padding: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px var(--gutter) 14px;
 }
 
-.nav-link {
+/* used on desktop when nav/footer persist across a navigation instead of
+   re-animating in — snaps a rule straight to its drawn state with no
+   visible transition */
+.is-instant {
+  transition: none !important;
+}
+
+.topbar-rule {
+  height: 1px;
+  margin: 0 var(--gutter);
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.topbar-rule.is-drawn {
+  transform: scaleX(1);
+}
+
+.icon-btn {
   background: none;
   border: 0;
   padding: 0;
-  color: #fff;
-  font-size: 13px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  cursor: pointer;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: inherit;
 }
 
-.nav-link.is-active {
+/* the same pill treatment on every breakpoint now — was mobile-only,
+   with desktop left as bare text; that read ambiguous as a button on
+   desktop, so desktop now gets the exact same clear, filled pill mobile
+   already had instead of a separate, lesser style. */
+.logo-btn {
+  /* -0.03em, not the mark's -0.07em — enough to close up the two C's
+     without outrunning .roll-line's 0.1em right-padding buffer (that
+     buffer is what was missing before; without it, any negative
+     letter-spacing here clips the last glyph against overflow:hidden). */
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 13px;
+  border-radius: 15px;
+  font-size: 15px;
+  background: var(--orange);
+  color: var(--black);
+}
+
+.roll {
+  /* no amount of line-height tuning can fix this: it's not that leading
+     is unevenly added (added leading is always split evenly) — it's
+     that the FONT's own ascent/descent are asymmetric. The gap between
+     the ascent line and actual cap-height is small; the gap reserved
+     below the baseline for descenders (g, y, p — which "CC"/"Menu"
+     never have) is large. Every line-height multiplier we tried just
+     scaled that same asymmetric box up or down. text-box-trim (below,
+     on .roll-line) crops the box to cap-height/baseline directly,
+     which is the actual fix. flex was tried for centering here and
+     rejected — flex silently collapses whitespace-only text nodes
+     between items, which is exactly what broke "Learn more" into
+     "Learnmore". display:block preserves normal space handling. */
+  display: inline-block;
+  overflow: hidden;
+  width: max-content;
+  height: 0.95em;
+  vertical-align: top;
+}
+
+.roll-inner {
+  display: block;
+  transition: transform 280ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.roll:hover .roll-inner {
+  transform: translateY(-0.95em);
+}
+
+.roll-line {
+  display: block;
+  width: max-content;
+  height: 0.95em;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0.08em 0.1em 0.08em 0;
+  /* crops the line box to cap-height (top) / alphabetic baseline (bottom)
+     instead of the font's full ascent+descent — no reserved descender
+     space left to show up as "air", and no clipping since it's sized to
+     what's actually there. the 0.1em right padding (not left, so text
+     stays put) plus width:max-content on both this and .roll above stop
+     the negative letter-spacing on .logo-btn from clipping the last
+     glyph's trailing edge against overflow:hidden. */
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+@supports not (text-box-trim: trim-both) {
+  /* fallback for browsers without text-box-trim: a modest line-height
+     buffer, worse than the trim but at least not clipping */
+  .roll,
+  .roll-line {
+    height: 1.2em;
+  }
+  .roll:hover .roll-inner {
+    transform: translateY(-1.2em);
+  }
+  .roll-line {
+    line-height: 1.2;
+    padding: 0;
+  }
+}
+
+.icon-menu {
+  display: none;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.topbar-action-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--ink);
   opacity: 0.5;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: inherit;
+  transition: opacity 220ms ease-out;
 }
 
-.hero-type {
+.topbar-action-btn.is-current,
+.topbar-action-btn:hover {
+  opacity: 1;
+}
+
+.menu-blur {
+  position: fixed;
+  inset: 0;
+  z-index: 510;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 380ms ease;
+}
+
+.menu-blur.is-active {
+  opacity: 1;
+}
+
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: auto;
+  min-height: 40vh;
+  max-height: 70vh;
+  z-index: 520;
+  display: flex;
+  flex-direction: column;
+  background: var(--orange);
+  color: var(--black);
+  transform: translateY(-100%);
+  transition: transform 380ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+}
+
+.menu-overlay[hidden] {
+  display: none;
+}
+
+.menu-overlay.is-open {
+  transform: translateY(0);
+}
+
+.menu-overlay .icon-btn {
+  color: var(--black);
+}
+
+.menu-topbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding: 20px var(--gutter);
+}
+
+.menu-close {
+  display: inline-block;
+  padding: 10px;
+  margin: -10px;
+}
+
+.menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 28px var(--gutter) 8px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  cursor: inherit;
+  opacity: 0;
+  transition: opacity 220ms ease-out;
+}
+
+.menu-item.is-visible {
+  opacity: 0.45;
+}
+
+.menu-item.is-current.is-visible {
+  opacity: 1;
+}
+
+.menu-item:not(.is-current):hover {
+  opacity: 0.8;
+}
+
+.menu-item-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  background: var(--black);
+}
+
+.menu-item:not(.is-current) .menu-item-dot {
+  opacity: 0;
+}
+
+.menu-item-label {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.menu-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: auto 0 0;
+  padding: 16px var(--gutter) 20px;
+  font-size: 13px;
+  opacity: 1;
+}
+
+.intro {
+  order: 1;
+  display: none; /* replaced by the centered mark on desktop; still used on mobile */
+}
+
+.intro-text {
+  margin: 0;
+  max-width: 50%;
+  /* top/bottom padding was 16px/4px (a leftover from before the mobile
+     order-swap below made .intro-rule sit directly under this paragraph
+     instead of under .cta-links) — that asymmetry visibly pulled the text
+     toward the rule below it instead of centering it between the topbar
+     rule above and .intro-rule below. Even padding centers it cleanly. */
+  padding: 10px var(--gutter);
+  font-size: 16px;
+  line-height: 1.15;
+}
+
+.cta-links {
+  order: 2;
+  display: none; /* mobile only now — desktop's "Learn more" lives in the footer */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 50%;
+  padding: 128px var(--gutter) 16px;
+}
+
+.cta-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: inherit;
+}
+
+.cta-link--mobile {
+  display: none;
+}
+
+.intro-rule {
+  order: 3;
+  display: none; /* mobile only, same reasoning as .intro / .cta-links */
+  height: 1px;
+  margin: 0 var(--gutter) 8px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.intro-rule.is-drawn {
+  transform: scaleX(1);
+}
+
+.mark-wrap {
+  order: 4;
   flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--mark-inset);
+  overflow: hidden;
+}
+
+.mark {
+  /* the home mark is LOGO_A.svg now (src/assets/logos/) — Xavier's own
+     hand-designed vector logo, not a font-generated glyph like the game
+     symbols are. It ships with its own fixed fill (#faff62), not
+     currentColor, so `color` here no longer actually paints it — kept
+     around since other rules key off .mark's color for layout purposes,
+     harmless either way.
+     Sizing is still width-driven (height comes along for free via
+     aspect-ratio, matching the SVG's own viewBox — 3968x1136 for this
+     logo, not the old 1822x728 text mark) — the two clamp() terms bound
+     it by whichever of width/height is tighter, so at any viewport shape
+     it's sized to the space it actually has.
+     --chrome-h is a rough estimate of the rest of the page's chrome
+     (topbar/footer/intro copy), tuned by eye rather than measured
+     precisely. */
+  display: block;
+  width: clamp(200px, min(calc(100vw - 2 * var(--mark-inset)), calc((100dvh - var(--chrome-h)) * 2)), 1200px);
+  aspect-ratio: 3968 / 1136;
+  color: var(--orange);
+  min-width: 0;
+  transform-origin: center bottom;
+  transform: scaleY(0);
+  will-change: transform;
+}
+
+.mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mark.is-rising {
+  animation: rise 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes mark-squish {
+  0% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  75% {
+    transform: scaleY(0.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  0% {
+    transform: scaleY(0);
+  }
+  70% {
+    transform: scaleY(1.04);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+.game {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--gutter);
+  overflow: hidden;
+}
+
+.game-hero {
+  display: none;
+}
+
+.game-mark {
+  /* "( ! )" etc. is a pre-generated SVG now (see
+     scripts/generate-symbol-svgs.mjs), not live text — sidesteps the
+     whole class of font-metric bugs above this comment used to fight
+     (different engines disagreeing on ascent/descent, letter-spacing
+     distorting centering, line-height fighting round-letter overshoot).
+     An SVG's bounds are exact, so none of that applies. game.js's
+     fitGameMark() sets width/height in px to fit the real available
+     space (same idea as home.js's fitMark(), simpler here since the
+     SVG's viewBox gives an exact, known aspect ratio instead of
+     something that has to be measured). */
+  display: block;
+  color: var(--orange);
+  transform-origin: center bottom;
+  transform: scaleY(0);
+  will-change: transform;
+}
+
+.game-mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.game-mark.is-rising {
+  animation: rise 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.game-desc {
+  align-self: stretch; /* .game-hero uses align-items:center (for .game-mark's content-sized box), so this and .hero-rule need to opt back into full width */
+  margin: 10px 0 0;
+  max-width: 600ch;
+  font-size: 19px;
+  line-height: 1.15;
+}
+
+.hero-rule {
+  align-self: stretch; /* see .game-desc's comment */
+  margin-top: 20px; /* matches .game-hero's mobile padding-top so the mark sits centered between the two rules, not closer to one */
+}
+
+.game-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* small additional safety margin alongside .game-desc-side's clamp —
+     44px flat was one more fixed vertical cost that didn't shrink on a
+     short screen */
+  gap: clamp(16px, 4vh, 44px);
+  padding-top: clamp(12px, 2.5vh, 24px);
+}
+
+.game-header-mark {
+  /* SVG, not text — see .game-mark's comment. Desktop doesn't need JS
+     fitting: it's a simple width-driven size (no risk of overflowing
+     into content below it the way the mobile layout's tighter vertical
+     space had), so plain CSS width + the svg's own intrinsic aspect
+     ratio (height:auto) is enough. Entrance is a scaleY reveal (same
+     mechanism as .game-mark/.mark) rather than the character-wave
+     reveal used elsewhere on this page — that reveal fragments text
+     nodes into per-character spans, which doesn't apply to an SVG. */
+  display: block;
+  flex-shrink: 0;
+  width: clamp(90px, 12vw, 220px);
+  color: var(--orange);
+  transform-origin: left bottom;
+  transform: scaleY(0);
+  will-change: transform;
+}
+
+.game-header-mark.is-rising {
+  animation: rise 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.game-header-mark svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.game-desc-side {
+  width: 75%;
+  max-width: 1400px;
+  margin: 0;
+  /* was a flat 48px — fine on a tall monitor, but this page has no scroll
+     (.page is a fixed 100dvh) so on a wide-but-short laptop screen that
+     size, wrapped over several lines, pushed .game-rows below the fold
+     and clipped it outright. Scaling against viewport height means it
+     shrinks on short screens instead of just overflowing them. */
+  font-size: clamp(20px, 3.5vh, 48px);
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.game-rows {
+  list-style: none;
+  width: 100%;
+  margin: auto 0 0;
+  padding: 0;
+}
+
+.game-row--ready .row-rule {
+  display: none;
+}
+
+.row-rule {
+  height: 1px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.row-rule.is-drawn {
+  transform: scaleX(1);
+}
+
+.row-inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  /* was 2px — fine back when text-box-trim wasn't applied and the row
+     text's own reserved descender space provided real breathing room.
+     Now that it's trimmed tight to the glyphs, this padding is the only
+     thing giving the rows any air. */
+  padding: 6px 0;
+}
+
+.row-label,
+.row-value,
+.ready-start {
+  /* same fix as .mark/.roll-line/.play-item: without this, the reserved
+     descender space below the baseline (unused by most of this row's
+     text) shows up as uneven padding around the glyphs. */
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+/* row-label/row-value/ready-start are shared by both this page's stat
+   rows and the play pages' (.game-rows reused there too) — 30px flat was
+   another fixed size that didn't respond to viewport HEIGHT (only the
+   768px width breakpoint below shrinks it), so a wide-but-short screen
+   couldn't fit every row and stacked into the same no-scroll overflow
+   problem as .game-desc-side above. */
+.row-label {
+  font-size: clamp(19px, 3vh, 30px);
+  flex-shrink: 0;
+}
+
+.row-value {
+  margin: 0;
+  font-size: clamp(19px, 3vh, 30px);
+  font-weight: 500;
+  text-align: right;
+}
+
+.ready-start {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--orange);
+  font-family: inherit;
+  font-size: clamp(19px, 3vh, 30px);
+  font-weight: 500;
+  cursor: inherit;
+}
+
+@media (max-width: 768px) {
+  .game-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* .game-mark now has explicit width/height (set by fitGameMark()), so it needs real centering, not text-align on a stretched box */
+    padding-top: 20px;
+  }
+
+  .game-header {
+    display: none;
+  }
+}
+
+body.page-game .options-row {
+  display: none;
+}
+
+.infobar {
+  order: 5;
+  margin: 0 var(--gutter);
+  padding-bottom: 12px;
+}
+
+.options-row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 0 8px;
+  margin-top: -20px;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+/* Audio/Fullscreen are real buttons now (the rest are still static
+   placeholder divs) — reset the browser's default button chrome so they
+   read identically to the plain divs next to them. Label/value are each
+   wrapped in roll() (see chrome.js), the same hover-roll every other
+   clickable label on the site uses — hovering anywhere on the BUTTON
+   triggers both, not just whichever specific line the cursor happens to
+   be over (the default .roll:hover only fires for that exact element). */
+.option--toggle {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  cursor: inherit;
+  /* fixed, not content-driven, and only on the two that actually change
+     — .options-row's space-between distributes gaps based on every
+     item's own width, so without this, Audio toggling between "Enabled"
+     (shorter) and "Disabled" (longer) shifted the OTHER options back and
+     forth on every click. Applying it to all four (including the static
+     placeholders, which never change) made the row's total committed
+     width wider than it needed to be and threw off space-between's math,
+     which is what pushed the last option in from the true right edge. */
+  min-width: 90px;
+}
+
+/* only the value (Enabled/Disabled) rolls on hover — the label (Audio:/
+   Fullscreen:) never changes and isn't itself the clickable "setting",
+   so it stays put rather than rolling along with it */
+.option--toggle:hover .option-value .roll-inner {
+  transform: translateY(-0.95em);
+}
+
+@supports not (text-box-trim: trim-both) {
+  .option--toggle:hover .option-value .roll-inner {
+    transform: translateY(-1.2em);
+  }
+}
+
+.option-label {
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+.option-value {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.footer-row {
+  /* not align-items:baseline — .roll has overflow:hidden, and per spec an
+     inline-block with non-visible overflow reports its BOTTOM MARGIN EDGE
+     as its baseline for flex alignment, not the actual text baseline
+     inside it. .filler (plain text) reports its real baseline. Those are
+     two fundamentally different reference points, not just a metrics
+     mismatch — matching text-box-trim on .filler couldn't fix it. center
+     sidesteps relying on baseline computation entirely. */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.footer-rule {
+  height: 1px;
+  margin: 2px 0 6px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.footer-rule.is-drawn {
+  transform: scaleX(1);
+}
+
+.filler {
+  margin: 0;
+  font-size: 16px;
+  /* height/line-height match .roll's own 0.95em exactly (not just the
+     trim edges below) — align-items:center still centers by each child's
+     own BOX height, and .roll's box was fixed at 0.95em while this had
+     no explicit height (default line-height:normal, taller), so even
+     centered, this had visibly more headroom above/below its text than
+     .roll did. */
+  height: 0.95em;
+  line-height: 0.95;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.footer-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: inherit;
+  font-family: inherit;
+  text-decoration: none;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.footer-link:hover {
+  text-decoration: underline;
+}
+
+.reveal-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.reveal-chunk {
+  /* vertical-align:top, not the inline-block default (baseline) — baseline
+     alignment lets adjacent chunks compute slightly different line-box
+     offsets (worse the fewer characters a chunk has), which is why one "C"
+     in a 2-chunk "CC" could clip while its twin didn't, and why the whole
+     line sat higher than plain, unchunked text would. Top-aligning every
+     chunk to its line box removes that per-chunk variance. */
+  display: inline-block;
+  vertical-align: top;
+  white-space: pre-wrap;
+  opacity: 0;
+  transition: opacity 110ms linear;
+}
+
+.reveal-chunk.is-visible {
+  opacity: 1;
+}
+
+.reveal-chunk--bold {
+  font-weight: 700;
+}
+
+.reveal-chunk--red {
+  color: var(--orange);
+}
+
+.reveal-chunk--white {
+  color: var(--white);
+}
+
+@media (max-width: 768px) {
+  :root {
+    --chrome-h: 340px; /* topbar + intro paragraph + cta links + footer now stack up taller on mobile */
+  }
+
+  .row-label,
+  .row-value,
+  .ready-start {
+    font-size: 19px;
+  }
+
+  .topbar-actions {
+    display: none;
+  }
+
+  .topbar-rule {
+    background: var(--ink); /* white line is desktop-only */
+  }
+
+  .intro,
+  .cta-links,
+  .intro-rule {
+    display: block; /* hidden on desktop now that the mark is centered; still used on mobile */
+  }
+
+  .cta-links {
+    display: flex;
+  }
+
+  .intro-text,
+  .cta-links {
+    max-width: none; /* narrow column is desktop-only; full-width on mobile */
+  }
+
+  .cta-links {
+    padding-top: 4px; /* the hefty gap above is desktop-only */
+  }
+
+  .options-row {
+    display: none;
+  }
+
+  /* .logo-btn's pill treatment is unconditional now (see the base rule)
+     — only .icon-menu (the mobile hamburger, never shown on desktop)
+     still needs its own mobile-only sizing here */
+  .icon-menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    padding: 0 13px;
+    border-radius: 15px;
+    font-size: 15px;
+    background: var(--white);
+    color: var(--black);
+  }
+
+  .cta-links {
+    order: 3;
+  }
+
+  .intro-rule {
+    order: 2;
+  }
+
+  .cta-link--mobile {
+    display: block;
+  }
+
+  .mark-wrap {
+    align-items: flex-end;
+    justify-content: center; /* the logo mark sits bottom-middle now, not bottom-left */
+    padding-bottom: 6px;
+    /* stays overflow:hidden (inherited from the base rule) — it's a real
+       safety net now that .mark uses text-box-trim instead of relying on
+       overflow:visible to dodge clipping. Turning it visible caused a
+       worse bug: on a wide/short desktop window .mark's clamp() can come
+       out bigger than this element's real leftover flex space, and with
+       overflow:visible that excess bled downward and pushed the footer
+       off the page's fixed, clipped viewport instead of just clipping
+       locally here. */
+  }
+
+  .mark {
+    /* sits centered ("bottom middle" per the new mock) — see the base
+       .mark rule's comment for why this is width-driven/SVG-based now. */
+    width: clamp(150px, min(calc(100vw - 2 * var(--mark-inset)), calc((100dvh - var(--chrome-h)) * 0.85 * 2.5)), 1000px);
+    margin-bottom: 5px;
+    transform-origin: center bottom;
+  }
+
+  .footer-row {
+    display: none;
+  }
+}
+
+.loader {
+  position: fixed;
+  inset: 0;
+  /* inset:0 alone leaves height sized against whatever viewport mobile
+     Safari/Chrome happen to be using for a fixed element's containing
+     block at that instant — while the URL bar is still animating in/out
+     on first load that can be smaller than the real visible area,
+     leaving a sliver of body's white background exposed at the bottom
+     until the next layout (e.g. the homescreen mounting) forces a
+     recalc. Pinning an explicit dvh height, same fallback pattern as
+     #app/.page, sizes it against the actual current visible viewport
+     instead. */
+  height: 100vh;
+  height: 100dvh;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--orange);
+  overflow: hidden;
+}
+
+.loader-bar-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(21, 21, 21, 0.25);
+  transition: opacity 400ms ease;
+}
+
+.loader-bar-track.is-leaving {
+  opacity: 0;
+}
+
+.loader-message {
+  position: absolute;
+  right: var(--gutter);
+  bottom: 28px;
+  margin: 0;
+  padding: 2px 0;
+  font-size: 16px;
+  color: var(--black);
+  text-align: right;
+}
+
+@media (min-width: 769px) {
+  .loader-message {
+    font-size: 22px;
+  }
+}
+
+.loader-message-text,
+.loader-dots {
+  display: inline-block;
+}
+
+.loader-dots {
+  margin-left: 4px;
+  opacity: 0;
+  /* own opacity, separate from the pulse animation below — dropping
+     .is-visible hides the whole group instantly regardless of which
+     dot the animation happened to be on, rather than freezing mid-pulse */
+}
+
+.loader-dots.is-visible {
+  opacity: 1;
+}
+
+.loader-dots.is-leaving {
+  /* only the final disappearance gets a transition at all — every
+     in-between swap stays an instant snap, set up above */
+  transition: opacity 350ms ease;
+}
+
+.loader-dot {
+  display: inline-block;
+  opacity: 0;
+  animation: loader-dot-pulse 1.4s ease-in-out infinite;
+  animation-play-state: paused;
+}
+
+.loader-dots.is-visible .loader-dot {
+  animation-play-state: running;
+}
+
+.loader-dot:nth-child(1) { animation-delay: 0ms; }
+.loader-dot:nth-child(2) { animation-delay: 220ms; }
+.loader-dot:nth-child(3) { animation-delay: 440ms; }
+
+@keyframes loader-dot-pulse {
+  0%, 55%, 100% { opacity: 0; }
+  20%, 35% { opacity: 1; }
+}
+
+.loader-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--black);
+}
+
+.loader-cover {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 2001;
+  background: var(--black);
+  transform: translateY(100%);
+  transition: transform 450ms ease;
+}
+
+.loader-cover.is-up {
+  transform: translateY(0);
+}
+
+.loader-cover.is-hidden {
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+/* "( ! )" / Odd One Out and "( ? )" / Find the ? play screens — gray
+   bg (.play-cover, see its own comment), black ink for the page content
+   by default. --bg deliberately stays whatever the previous page (game,
+   black) left it as, NOT the play-screen color: body.className swaps
+   synchronously, before .play-cover has animated into place, so body's
+   own bg is what's briefly visible in the gap above the not-yet-covered
+   part of the screen while the cover slides down — if it already
+   matched there'd be nothing left for the swipe to reveal, and the
+   cover's motion would become invisible (all you'd see is .page's
+   content fading in). Leaving it black is what makes the sweep visible.
+   Tried matching this to --gray for mobile Safari's chrome-tinting
+   accuracy — it does make that chrome consistently right, but it was
+   this exact mismatch that made the swipe reveal anything in the first
+   place, so that's the tradeoff: pick one or the other with a single
+   shared --bg. Reverted back to prioritizing the swipe. */
+body.page-exclaim-play,
+body.page-question-play,
+body.page-equals-play,
+body.page-hashtag-play {
+  --bg: var(--black);
+  --ink: var(--black);
+}
+
+body.page-exclaim-play .page,
+body.page-question-play .page,
+body.page-equals-play .page,
+body.page-hashtag-play .page {
+  position: relative;
+  z-index: 2;
+}
+
+body.page-exclaim-play .options-row,
+body.page-question-play .options-row,
+body.page-equals-play .options-row,
+body.page-hashtag-play .options-row {
+  display: none;
+}
+
+/* "Spot the ?" — the "?" is wrapped in .text-red (see question-play.js),
+   which fragmentElement() turns into .reveal-chunk--red. This used to be
+   white (from when this page's bg was still orange and white was the
+   standout color) — the bg is the medium gray now, and .play-item.is-red
+   is var(--orange) there too, so this matches that instead of staying
+   white, which read as faint/washed-out against the gray. "Spot the"
+   stays the page's default --ink (black). */
+body.page-question-play .play-prompt .reveal-chunk--red {
+  color: var(--orange);
+}
+
+/* the mobile menu overlay is orange-bg/black-text everywhere else, but
+   the gray-bg play screens keep the black-bg/white-text version — was
+   reverted back to this after trying the default orange, cleaner here */
+body.page-exclaim-play .menu-overlay,
+body.page-question-play .menu-overlay,
+body.page-equals-play .menu-overlay,
+body.page-hashtag-play .menu-overlay {
+  background: var(--black);
+  color: var(--white);
+}
+
+body.page-exclaim-play .menu-overlay .icon-btn,
+body.page-question-play .menu-overlay .icon-btn,
+body.page-equals-play .menu-overlay .icon-btn,
+body.page-hashtag-play .menu-overlay .icon-btn {
+  color: var(--white);
+}
+
+body.page-exclaim-play .menu-item-dot,
+body.page-question-play .menu-item-dot,
+body.page-equals-play .menu-item-dot,
+body.page-hashtag-play .menu-item-dot {
+  background: var(--white);
+}
+
+.play {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--gutter);
+  overflow: hidden;
+}
+
+.play-prompt {
+  margin: 0;
+  /* was 16px/12px — matches .row-inner's tight 6px rhythm now instead of
+     sitting noticeably looser than the rest of the page */
+  padding: 6px 0;
+  /* same fixed-size-didn't-scale-with-height issue as .game-desc-side —
+     see that comment */
+  font-size: clamp(19px, 3.5vh, 30px);
+  font-weight: 500;
+}
+
+.play-rule {
+  margin: 0 0 12px;
+}
+
+.play-timer {
+  margin: 0;
+  font-size: clamp(19px, 3.5vh, 30px);
+  font-weight: 500;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 220ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.play-timer.is-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+@media (max-width: 768px) {
+  .play-prompt,
+  .play-timer {
+    font-size: 19px;
+  }
+}
+
+.play-board {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  overflow: hidden;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  /* 56px was a flat floor regardless of how much real height .play-board
+     was actually squeezed to on a short viewport — grid rows can't shrink
+     below their track's minimum, so a round with enough rows to need more
+     height than that floor allowed was centered (align-content) and
+     clipped by overflow:hidden on both ends, with the top edge being what
+     was actually visible as "missing". Letting the floor itself shrink on
+     short screens means the grid never needs more room than it's given.
+     (Only matters before JS sets a round's own inline grid-template-
+     columns/rows — but grid-auto-rows is never overridden inline, so this
+     is the one actually live at runtime.) */
+  grid-auto-rows: minmax(clamp(30px, 6vh, 56px), 1fr);
+  align-content: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 0;
+}
+
+/* Simon Says' light board — 2 lights, then 2x2, then 3x3 as score climbs
+   (see game-equals.js/equals-play.js). The actual column/row count is
+   set inline per instance (buildBoard() in equals-play.js), since it
+   changes at runtime — this just has the shared layout rules. Built and
+   wired up before the countdown finishes so it's ready the instant play
+   starts. The board itself has no opacity/entrance of its own anymore —
+   each light deals itself in individually (see .simon-light below), so
+   there's nothing for the board's own box to fade. */
+/* .simon-board is the full flex slot (centers its one child both axes,
+   same pattern "( # )"/Snake's .hashtag-board uses); .simon-grid is the
+   actual grid, pinned to an explicit px width/height by fitSimonGrid()
+   in equals-play.js — the slot itself is almost never square (it's
+   whatever's left between the prompt and .game-rows), so the largest
+   square that fits has to be measured, not declared, same reasoning as
+   Snake's board. */
+.simon-board {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.simon-grid {
+  display: grid;
+  gap: clamp(16px, 4vw, 48px);
+}
+
+.simon-light {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: clamp(60px, 14vw, 180px);
+  font-weight: 700;
+  line-height: 1;
+  /* starts invisible — .is-dealt (added with a per-light stagger from
+     equals-play.js's dealInLights()) is what actually brings each one
+     in, via the keyframe animation below rather than this transition
+     (which stays reserved for the lit-flash during play, color/transform
+     on a much snappier 120ms — the two would otherwise fight over the
+     same transform property at two different speeds). opacity's own
+     transition here is what makes undealLights() (removing .is-dealt to
+     clear the board before the next countdown) fade out smoothly instead
+     of vanishing instantly — animations win over transitions on a
+     shared property while .is-dealt's own animation is actively
+     running, so this doesn't fight the deal-IN itself. */
+  opacity: 0;
+  transition: color 120ms ease, transform 120ms ease, opacity 240ms ease;
+}
+
+/* 9 lights need noticeably more room than 4 at the same per-light size
+   — still giant, just scaled down enough that a 3x3 fits without
+   overflowing the board the way the 2x2's size would */
+.simon-board[data-count='9'] .simon-light {
+  font-size: clamp(32px, 8vw, 96px);
+}
+
+.simon-light.is-lit {
+  color: var(--orange);
+  transform: scale(1.08);
+}
+
+/* the "deal" itself — a pop on the way in, same spring feel as the
+   lit-flash but as a one-shot keyframe (not the transition above) so it
+   can't collide with it. Starts noticeably smaller (not just faded)
+   for a clearer before/after than a plain fade alone would read as.
+   forwards holds the end state once it finishes, so the light doesn't
+   snap back to its pre-animation opacity/scale afterward. */
+.simon-light.is-dealt {
+  animation: simon-light-deal-in 420ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes simon-light-deal-in {
+  from { opacity: 0; transform: scale(0.25); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* "( # )" / Snake — a fixed 15x15 grid of "#" glyphs (GRID_SIZE in
+   game-hashtag.js), every cell always present and rendered; only the
+   color changes per cell (dim/empty, yellow/snake, white/apple), so the
+   board never reflows mid-game the way a dynamically-sized grid would.
+   .hashtag-board is the full flex slot (same as .play-board/.simon-board,
+   centers its one child both axes); .hashtag-grid is the actual grid,
+   pinned to an explicit px width/height by fitHashtagGrid() in
+   hashtag-play.js — an aspect-ratio or percentage-based square doesn't
+   work here because the slot itself isn't square (it's whatever's left
+   between the prompt and .game-rows), so the largest square that fits
+   has to be measured, not declared. */
+.hashtag-board {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0;
+}
+
+.hashtag-grid {
+  display: grid;
+  gap: clamp(2px, 0.6vw, 6px);
+}
+
+.hashtag-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  color: var(--ink);
+  font-family: var(--font);
+  /* bumped up from clamp(10px, 2.1vw, 22px) — bigger/bolder per request;
+     font-weight is already 700, the heaviest Space Mono ships (it's only
+     400/700), so size is the only lever left for "bolder" here. Cell
+     box size (grid/gap) is untouched — a bigger glyph just fills more of
+     the same fixed-size cell via the flex centering below. */
+  font-size: clamp(24px, 6vw, 64px);
+  font-weight: 700;
+  line-height: 1;
+  /* undealt resting state — invisible, slightly shrunk, ready for
+     is-dealt's pop. Opacity stays a plain transition (NOT part of the
+     keyframe below) deliberately — a CSS animation's held end-value
+     (via forwards) overrides any normal opacity rule for as long as that
+     class stays on the element, cascade position/specificity be damned.
+     Since is-dealt never gets removed, animating opacity to 0.25 with
+     forwards would permanently cap every cell at 0.25 no matter what
+     is-snake/is-apple's own opacity:1 says — exactly the "yellow/white
+     look washed out" bug this replaced. Kept short on purpose: the
+     snake's own movement re-toggles this every tick, down to a 90ms
+     floor at top speed (see getTickMs in game-hashtag.js), so anything
+     slower never finishes resolving before the next move overwrites it. */
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 80ms ease, color 60ms ease;
+}
+
+/* same spring timing as ( = )'s own light deal-in (simon-light-deal-in)
+   — scale-only, so it can safely hold forwards without trapping opacity.
+   The opacity fade-up to full (solid ink, same as is-snake/is-apple —
+   empty cells aren't dimmed anymore) still happens, just via the plain
+   transition below (slow, for this first reveal only) rather than inside
+   this animation. */
+.hashtag-cell.is-dealt {
+  opacity: 1;
+  animation: hashtag-cell-deal-in 420ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* the slow fade is only for the initial reveal — the instant is-snake/
+   is-apple also lands (right at round start, or every tick thereafter),
+   this selector stops matching and the fast base transition above takes
+   back over for that opacity jump instead, same as any other in-game
+   toggle */
+.hashtag-cell.is-dealt:not(.is-snake):not(.is-apple) {
+  transition: opacity 420ms ease;
+}
+
+@keyframes hashtag-cell-deal-in {
+  from { transform: scale(0.4); }
+  to { transform: scale(1); }
+}
+
+.hashtag-cell.is-snake {
+  color: var(--orange);
+  opacity: 1;
+}
+
+.hashtag-cell.is-apple {
+  color: var(--white);
+  opacity: 1;
+}
+
+.play-item {
+  /* same fix as .mark/.roll-line: flex align-items:center was centering
+     these characters using the font's full ascent+descent box, which
+     reserves real space below the baseline these glyphs (?, !, etc.)
+     never use — so they always sat visually high in their grid cell,
+     with empty air below. text-box-trim crops to cap-height/baseline
+     first, so the flex centering that's left has an actually-symmetric
+     box to center. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: var(--item-font-size, 32px);
+  color: var(--black);
+  cursor: inherit;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+/* "( ? )" — color+symbol are the whole puzzle here, not scoped to a
+   data-mode like Odd One Out's is, since it's a plain per-item flag.
+   Class stays "is-red" (renaming it would mean touching every JS
+   reference to isRed/is-red across the game logic) but it now paints
+   the acid/accent color, not red or white — non-black game text is the
+   accent color now. */
+.play-item.is-red {
+  color: var(--orange);
+}
+
+/* the target always paints above any overlapping distractor — jumble mode
+   packs items tight enough that one can visually sit over another, and it
+   must always stay genuinely clickable, never actually hidden underneath */
+.play-item.is-target {
+  z-index: 1;
+}
+
+/* the "new target" spectacle — one huge glyph, alone, centered in the
+   board (see question-play.js's playTargetReveal). Same font treatment
+   as .play-item, just much bigger; color is set by JS via .is-red exactly
+   like a real item, so it reads as a preview of the tile you're about to
+   hunt for. */
+.play-target-char {
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: clamp(140px, 45vmin, 440px);
+  color: var(--black);
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.play-target-char.is-red {
+  color: var(--orange);
+}
+
+/* free-form layout for jumble/motion — no grid at all, items are
+   positioned directly and allowed to overlap */
+.play-board[data-layout='chaos'] {
+  display: block;
+  position: relative;
+  padding: 0;
+}
+
+.play-board[data-layout='chaos'] .play-item {
+  position: absolute;
+  /* explicit, not left as "static position" fallback — with 30+ siblings
+     all absolutely positioned and none given left/top, each one's
+     hypothetical static position stacks as if the others weren't out of
+     flow, so items later in the DOM order land further down than the
+     first ones (chaos-bounce/chaos-wrap set x/y purely via transform,
+     assuming (0,0) is every item's true origin — items deeper in the
+     list were silently drifting into a lower, larger effective range,
+     which is exactly why the "bounds" looked shifted toward the bottom
+     and never reached the real top). Pinning left/top removes that
+     per-item offset entirely; renderChaosRound/renderJumbleRound's own
+     inline left/top simply override this, unaffected.
+  */
+  left: 0;
+  top: 0;
+  width: auto;
+  height: auto;
+  padding: 4px;
+}
+
+/* "( ? )" grid rounds only — much bigger symbols than Odd One Out's.
+   Jumble/motion rounds set their own size via --item-font-size per round
+   (tiny tiles when densely packed, huge when actively flying across the
+   screen), so this default only applies to the plain grid mode. */
+body.page-question-play .play-item {
+  font-size: var(--item-font-size, 56px);
+}
+
+.play-board[data-mode='color'] .play-item.is-odd {
+  color: var(--orange);
+}
+
+/* same reasoning as .play-item.is-target (question-play.js's target) —
+   chaos/jumble layouts pack items tight enough that one can visually sit
+   over another, and the odd one out must always stay genuinely
+   clickable, never actually hidden underneath */
+.play-item.is-odd {
+  z-index: 1;
+}
+
+/* transform, not font-size — scaling the font would inflate this cell's own
+   grid track and throw off every other cell's uniform size/spacing, since
+   transforms happen after layout and never affect the grid at all. Bigger
+   vs smaller is randomized per round so the odd one isn't always the
+   biggest item on screen — that made it trivial to spot at a glance. */
+.play-board[data-mode='size'][data-size-dir='up'] .play-item.is-odd {
+  transform: scale(1.6);
+}
+
+.play-board[data-mode='size'][data-size-dir='down'] .play-item.is-odd {
+  transform: scale(0.6);
+}
+
+@keyframes item-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.play-item.is-shaking {
+  /* shake only, no color change — Find the ? uses color as part of the
+     actual puzzle, so briefly forcing red on a wrong click would mislead */
+  animation: item-shake 280ms ease;
+}
+
+/* jumble-layout items already carry a translate+rotate transform for their
+   scattered position — the shake keyframe above sets transform too and
+   would replace that outright, making the item visibly jump. Use an
+   opacity flash instead here, which doesn't touch transform at all. */
+.play-board[data-layout='chaos'] .play-item.is-shaking {
+  animation: none;
+  opacity: 0.3;
+  transition: opacity 160ms ease;
+}
+
+/* end-of-game results screen (src/results-screen.js) — replaces .play's
+   entire inner content (prompt/rule/timer/board/rows all gone), so this
+   fills the same flex slot they used to share rather than nesting inside
+   a leftover wrapper. Mirrors the .game page's own structure: the score
+   takes .game-mark's slot (full width, framed between two rules, sized
+   by fitResultsNumbers() the same way fitGameMark() sizes the mark),
+   Overview takes .game-desc's slot as a label/stat-stack row instead of
+   a paragraph, and the attempt number repeats the framed-number
+   treatment right above the real footer rule. */
+.results {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.results-heading {
+  margin: 0;
+  padding: 2px 0;
+  font-size: 19px;
+  /* Space Mono only ships 400/700 (see :root's --font comment) — 500
+     doesn't exist and was rendering visibly lighter than the homescreen/
+     game-description text (.intro-text/.game-desc), which never declared
+     a weight at all and so got a true, correctly-loaded 400 */
+  font-weight: 400;
+}
+
+/* faster than the in-game rule draw (1600ms) — "quickly and smoothly",
+   this isn't the slow first-load reveal, it's a result appearing. Shared
+   by the screen's own framing rules (.results-rule) and the per-stat
+   dividers (.results-stat-rule, desktop-only — see below) so every line
+   on this screen draws identically instead of some looking thinner/
+   un-drawn because they were never told to draw at all. */
+.results-rule,
+.results-stat-rule {
+  height: 1px;
+  flex-shrink: 0;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 550ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.results-rule.is-drawn,
+.results-stat-rule.is-drawn {
+  transform: scaleX(1);
+}
+
+/* undrawing the leftover in-game rules (play-rule, the Round/Score
+   row-rules) before the results markup takes over — their normal
+   transition is 1600ms, far longer than the short window before the DOM
+   underneath them gets replaced, so without this override the shrink
+   never visibly finishes; it just gets cut off. */
+.is-undrawing {
+  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Sized to their content (flex: 0 0 auto — fitResultsNumbers() sets the
+   actual pixel flex-basis), not stretched to fill .results' leftover
+   space. Used to be flex:1, which guaranteed the digits filled the box's
+   height exactly but — since a phone's leftover height rarely matches 3
+   digits' natural aspect ratio at the available width — left visible
+   top/bottom air centered inside the box. Sizing the box to exactly what
+   the digits need removes that air; .results-block--overview's own
+   flex:1 (below) absorbs whatever leftover space exists instead, which
+   reads as a bit more breathing room around a list rather than a gap
+   around what's supposed to look like a precise, edge-to-edge vectorized
+   number. Each digit is its own vectorized glyph (src/assets/digits,
+   generated by scripts/generate-symbol-svgs.mjs, regular weight) rather
+   than live text — a font glyph's built-in side-bearing was eating into
+   "span edge-to-edge" no matter how precisely a text run got measured/
+   scaled, since that padding is baked into what gets measured; an SVG's
+   ink bounding box has none of it. gap is set by fitResultsNumbers() (the
+   "character spacing" control), scaled to the digits' own computed
+   height. */
+.results-score,
+.results-attempt-number {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0;
-  padding: 0 24px;
-  font-size: clamp(40px, 10vw, 140px);
-  font-weight: 700;
-  line-height: 0.9;
+  color: var(--orange);
+  transform-origin: center bottom;
+  transform: scaleY(0);
+  will-change: transform;
+  overflow: hidden;
+}
+
+.results-score.is-rising,
+.results-attempt-number.is-rising {
+  animation: rise 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.results-digit {
+  display: block;
+  flex-shrink: 0;
+}
+
+.results-digit svg {
+  display: block;
+  height: 100%;
+  width: auto;
+}
+
+.results-block {
+  flex-shrink: 0;
+  padding: 6px 0;
+}
+
+/* the one flex-grow child left in .results — absorbs whatever leftover
+   vertical space the now-content-sized score/attempt numbers don't claim
+   (see their comment). Content sits at the top (2px under the score's
+   bottom rule) rather than centered — any absorbed leftover space shows
+   up below the stat list instead, as room before the attempt row, which
+   reads as normal section spacing rather than pushing "Overview" away
+   from the rule it's meant to sit right under. */
+.results-block--overview {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: 2px;
+  order: 1;
+}
+
+.results-attempt-row,
+.results-attempt-rule,
+.results-attempt-number {
+  order: 2;
+}
+
+.results-block-label {
+  margin: 0;
+  padding: 3px 0;
+  font-size: 19px;
+  font-weight: 400;
+  flex-shrink: 0;
+  /* .results-stat-label/.results-stat-value already trim their reserved
+     ascent space, so their ink sits right at the top of their box — this
+     label didn't, so its own ink sat visibly lower than "Score"'s
+     despite both boxes sharing the same flex-start top edge */
+  /* height/line-height match .roll's own 0.95em exactly, same fix
+     .filler uses next to .footer-link — text-box-trim alone still left
+     this with the default (taller) line-height's extra headroom, so
+     align-items:center on .results-attempt-row centered a visibly
+     bigger box than .results-retry's .roll, sitting "Attempt No."
+     lower/"Retry" higher than the trim alone would suggest */
+  height: 0.95em;
+  line-height: 0.95;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+/* mobile: a single row, "Overview" on the left, the whole stat stack
+   right-aligned on the right — not a paragraph, and not one row per stat */
+.results-overview-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.results-stat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.results-stat-entry {
+  display: flex;
+  flex-direction: column;
+}
+
+/* mobile: no divider between individual stats — the block is framed by
+   the Score/Attempt rules above and below it, nothing in between */
+.results-stat-rule {
+  display: none;
+}
+
+.results-stat-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  /* text-box-trim below strips each line's natural leading entirely, so
+     without an explicit gap the label and its value sit flush against
+     each other — close enough to read as overlapping */
+  gap: 3px;
+  padding: 3px 0;
+}
+
+.results-stat-label,
+.results-stat-value {
+  font-size: 19px;
+  text-align: right;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+.results-stat-value {
+  font-weight: 400;
+}
+
+.results-attempt-row {
+  display: flex;
+  /* baseline alignment doesn't work reliably against .results-retry now
+     that it's wrapped in .roll's hover-swap markup — .roll's baseline
+     synthesizes from its own box rather than the visible text inside it,
+     which is why Retry sat noticeably higher than "Attempt No.". same
+     fix .footer-links already uses for its own .roll-wrapped links. */
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.results-retry {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--orange);
+  font-family: inherit;
+  font-size: 19px;
+  font-weight: 400;
+  cursor: inherit;
+  /* vertical position is set by alignRetryButton() in results-screen.js,
+     not CSS — several rounds of CSS-only attempts (align-items:center,
+     matching .roll's 0.95em box height, a flat px nudge, an em-based
+     nudge) all landed close but never exactly on the same line as the
+     plain text next to it, since .roll's internal box geometry doesn't
+     reliably correspond to its visible glyph position. Measuring both
+     elements' actual rendered position and correcting the real pixel
+     delta sidesteps needing to know why they disagree. */
+}
+
+/* Desktop's "one large grid" (src/results-screen.js's buildDesktopMarkup)
+   — a completely different DOM from mobile's, not the same markup
+   reshuffled by media query: every stat, including Score and Attempt
+   No., is a row in this single list, bottom-anchored against the footer
+   exactly like .game-rows (margin: auto 0 0) instead of the numbers each
+   claiming their own framed section with Overview stranded in the
+   middle with a dead gap below it. Same thin row padding throughout,
+   same right-aligned values, everything bottom-aligned to its own rule
+   — Score/Attempt No. just have a much bigger value than the others. */
+@media (min-width: 769px) {
+  .results-grid {
+    list-style: none;
+    width: 100%;
+    margin: auto 0 0;
+    padding: 0;
+  }
+
+  .results-grid-row {
+    flex-shrink: 0;
+  }
+
+  .results-grid-inner {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 0;
+  }
+
+  /* same font size as .game-row's .row-label/.row-value on the pre-game
+     description screen, not the flat 19px mobile uses */
+  .results-grid-label,
+  .results-grid-value {
+    font-size: clamp(19px, 3vh, 30px);
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
+  }
+
+  .results-grid-value {
+    text-align: right;
+    font-weight: 500;
+  }
+
+  /* Retry sits directly in the heading row (not nested inside a
+     .results-grid-label), so it doesn't inherit that clamp() the way
+     .results-grid-value's siblings do — without this it stayed pinned
+     to the flat 19px mobile uses while "Time's up" grew, so it read as
+     visibly smaller next to it. */
+  .results-retry {
+    font-size: clamp(19px, 3vh, 30px);
+  }
+
+  /* big numbers right-aligned same as the small stat values — mobile's
+     left-aligned/full-width treatment doesn't apply here, these now sit
+     inline in a grid row next to their label */
+  .results-score,
+  .results-attempt-number {
+    justify-content: flex-end;
+  }
+}
+
+.play-countdown {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  pointer-events: none;
+}
+
+.play-square {
+  width: 22px;
+  height: 22px;
+  background: var(--ink);
+  opacity: 0;
+  transform: scale(1);
+  transition: opacity 220ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.play-square.is-dim {
+  opacity: 0.35;
+}
+
+.play-square.is-lit {
+  opacity: 1;
+}
+
+.play-square.is-final {
+  transform: scale(1.15);
+}
+
+.play-square.is-hiding {
+  transition: opacity 300ms ease;
+  opacity: 0;
+}
+
+.play-cover {
+  /* despite the name/mechanism (a swipe-in transition), this never gets
+     removed or hidden after its one-time slide-down — .page itself has
+     no background of its own, so this IS the play screen's real,
+     permanent visible background, not just an entrance effect. */
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: var(--gray);
+  transform: translateY(-100%);
+  transition: transform 450ms ease;
+}
+
+.play-cover.is-down {
+  transform: translateY(0);
+}
+
+.play-exit-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: var(--gray);
+  transform: translateY(100%);
+  transition: transform 450ms ease;
+}
+
+.play-exit-cover.is-up {
+  transform: translateY(0);
+}
+
+.play-exit-cover.is-hidden {
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+
+/* dev-only round picker (exclaim-play.js) — stripped from production
+   builds since it's only ever rendered behind import.meta.env.DEV, this
+   styling is dev-server-only too */
+.dev-panel {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 2500;
+  font-size: 12px;
+}
+
+.dev-panel [data-dev-toggle] {
+  background: var(--black);
+  color: var(--white);
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.dev-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 8px;
+  background: rgba(21, 21, 21, 0.92);
+  border-radius: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.dev-panel-body button {
+  background: var(--white);
+  color: var(--black);
+  border: 0;
+  border-radius: 4px;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.dev-panel-body [data-dev-reset] {
+  background: var(--orange);
+  margin-top: 4px;
+}
+
+/* "/info" — the "Information" destination. Unlike every other page, this
+   one actually scrolls (a real content page, not a single fixed screen),
+   and it's the only page with its own footer instead of the shared
+   .infobar (see chrome.js's renderChrome footerHTML param). */
+body.page-info .page {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* the browser's scroll-anchoring can silently shift this container's
+     scrollTop to compensate for layout shifts while the entrance
+     animation staggers content in below the fold — since the topbar
+     sits at the very top, that's exactly what could scroll it out of
+     view on load with no user action. Nothing else on the site scrolls
+     internally like this page does, so nothing else needs this. */
+  overflow-anchor: none;
+}
+
+/* sticky nav — only makes sense (and only takes effect) here, since this
+   is the one page that actually scrolls; everywhere else .page is a
+   single fixed screen with nothing to stick against. .topbar-sticky
+   wraps both .topbar and .topbar-rule as ONE sticky unit — giving each
+   its own independent sticky position (with a hardcoded top offset for
+   the rule, guessing .topbar's height) would be fragile to any future
+   change in the topbar's actual rendered height; wrapping them means
+   they can never drift apart regardless. Opaque bg matching the page so
+   scrolling content doesn't show through underneath. */
+body.page-info .topbar-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  /* no background — the nav floats over whatever's scrolling underneath,
+     not a solid bar covering it. Always visible — no hide-on-scroll.
+     --ink: white by default since .info-dark (black bg) is the first
+     thing under it on this page — see the is-over-light-section rule
+     further down for when it darkens back to black. */
+  --ink: var(--white);
+  transition: color 200ms ease;
+}
+
+/* the rule draws in like every other page's on load, but here it also
+   undraws the moment you scroll down even slightly (and redraws the
+   instant you're back at the top) — toggled in info.js via scroll
+   position, same is-drawn/is-undrawing mechanism as everything else. The
+   nav buttons above it are untouched by this, only the rule reacts. */
+
+/* darkens back to black once scrolled over the gray COLOR section OR the
+   yellow footer (both light/mid backgrounds that need dark ink instead
+   of the page's white default) — see updateNavContrast in info.js. */
+body.page-info .topbar-sticky.is-over-light-section {
+  --ink: var(--black);
+}
+
+/* THE topbar-rule bug, actually found via DevTools (computed height was
+   exactly 0px, not a cascade issue): .page's default (row) flex context
+   uses align-items:stretch, which forces .frame's cross-size (height) to
+   exactly match .page's own 100dvh — and critically, "height:auto" does
+   NOT escape that under stretch; stretch treats auto as "fill the
+   container," not "size to content," so a plain height:auto override
+   was a no-op. With .frame locked to 100dvh, its children (topbar,
+   topbar-rule, .info, footer) — together far taller than 100dvh once
+   this page's own tall content is included — hit flexbox's default
+   flex-shrink:1 and get proportionally compressed to fit inside that
+   fixed box, before overflow/scrolling ever enters the picture. The
+   topbar-rule's 1px base size next to .info's huge padded height means
+   any shrink factor floors it at 0. align-self:flex-start is what
+   actually opts this one item OUT of stretch, letting height:auto mean
+   what it normally means (content-based) so nothing needs to shrink. */
+body.page-info .frame {
+  align-self: flex-start;
+  height: auto;
+  min-height: 100dvh;
+}
+
+/* every piece of text on this page is deliberately the same size/weight
+   as the shared footer's .filler/.footer-link, just scaled up a step
+   (18px vs. 16px) since the footer's own size read too small once this
+   became a whole page of body copy rather than one trailing line —
+   sections read as headers through position/color, not through being
+   visually bigger or bolder than the body copy around them. */
+.info-dark {
+  display: flex;
+  flex-direction: column;
+  background: var(--black);
+  color: var(--white);
+  --ink: var(--white);
+  /* deliberately more air above the first A7YPE row than the tight
+     between-row rhythm below uses — a fresh page starting, not another
+     row in a list */
+  padding: 170px var(--gutter) 24px;
+  font-size: 24px;
+  font-weight: 400;
+}
+
+/* the gap between each row's own closing rule and the next row's
+   opening one — still tight compared to the page's bigger rhythm
+   elsewhere, but not so tight adjacent rules read as merged into one */
+.info-dark > * {
+  margin-top: 48px;
+}
+
+.info-dark > *:first-child {
+  margin-top: 0;
+}
+
+/* every label in here reads in the accent yellow, not the white body
+   text uses — A7YPE, Logomark — same treatment COLOR's own labels get */
+.info-dark .info-row-label,
+.info-dark-label {
+  color: var(--orange);
+}
+
+/* .row-label's own clamp() (tuned for the game-row UI it was originally
+   built for) is smaller than this page's 24px body text — without this,
+   "Logomark" read noticeably smaller than the A7YPE row-labels next to it */
+.info-dark-label {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* padding here keeps the graphic off the flanking rules on every side,
+   instead of sitting flush against them */
+.info-dark-logomark-wrap {
+  padding: 32px 0;
+}
+
+/* the graphic itself is what's bounded by this section's own rule pair —
+   the "Logomark" label sits inside that same bounded area, overlaid on
+   its top-left corner, not as a separate row before it. Positioned
+   relative to this inner wrapper specifically (not the padded outer
+   one) so it tracks the graphic's own corner regardless of how much
+   padding surrounds it. */
+.info-dark-logomark-inner {
+  position: relative;
+}
+
+.info-dark-logomark-inner .info-dark-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.info-dark-logomark {
+  /* full width, same mechanism as the swatch marks and the old wordmark
+     — fills the gutter-to-gutter width exactly */
+  width: 100%;
+  opacity: 0;
+  transform: scale(0.72);
+  transform-origin: top left;
+  transition: opacity 500ms ease, transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.info-dark-row--logomark.is-visible .info-dark-logomark {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.info-dark-logomark svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* label, top rule, paragraph, bottom rule are four flat siblings (see
+   darkTextRow in info.js) laid out via named grid areas instead of a
+   nested flex row — a grid can rearrange those areas per breakpoint
+   independently, which a shared flex/DOM order couldn't: desktop keeps
+   the title beside the paragraph between the two rules, mobile moves
+   the title above the top rule entirely instead of nesting it inside
+   the rule pair. */
+.info-dark-row--text {
+  display: grid;
+  grid-template-columns: clamp(140px, 50vw, 640px) 1fr;
+  grid-template-areas:
+    "top    top"
+    "label  text"
+    "bottom bottom";
+  column-gap: 24px;
+}
+
+.info-dark-row--text > .row-rule:first-of-type {
+  grid-area: top;
+}
+
+.info-dark-row--text > .row-rule:last-of-type {
+  grid-area: bottom;
+}
+
+.info-row-label {
+  grid-area: label;
+  align-self: start;
+  padding: 6px 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.info-row-text {
+  grid-area: text;
+  align-self: start;
+  margin: 0;
+  padding: 6px 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.5;
+}
+
+.info-accordion {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.info-accordion-row {
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.info-accordion-row.is-visible {
+  opacity: 1;
+}
+
+.info-accordion-toggle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 6px 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: inherit;
+}
+
+.info-accordion-toggle .row-label {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.info-accordion-icon {
+  flex-shrink: 0;
+  width: 1ch;
   text-align: center;
-  letter-spacing: -0.02em;
+  font-size: inherit;
+  line-height: 1;
+}
+
+/* max-height, not grid-template-rows: 0fr — the grid-collapse trick needs
+   every ancestor down to the text node to correctly resolve min-height:0,
+   and something in this chain wasn't, leaving a sliver of the paragraph
+   visible ("peeking through") even while nominally collapsed. max-height
+   0 + overflow:hidden has no such dependency: the content genuinely can't
+   render outside a 0-height box regardless of its own intrinsic sizing. */
+.info-accordion-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* no flat max-height here — a fixed guess like 400px clips longer text on
+   narrow/mobile widths where it wraps to more lines than that comfortably
+   fits. info.js sets max-height inline to the row's actual measured
+   scrollHeight when it opens instead, so the full text always shows
+   regardless of how many lines it ends up taking. */
+
+.info-accordion-text {
+  margin: 0;
+  padding: 0 0 14px;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.5;
+  color: var(--orange);
+}
+
+/* the color-system section — its own local scheme (black text/rules on
+   the gray bg), same idea as .info-footer's. No heading/description of
+   its own anymore — straight from .info-dark's last rule into the
+   swatches themselves, an immediate transition rather than a separate
+   intro. */
+.info-color {
+  --ink: var(--black);
+  background: var(--gray);
+  color: var(--black);
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.info-color-swatches {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-color-swatch {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 220px;
+  /* extra inset on the right beyond the normal gutter — enough that the
+     values/pantone column sits noticeably off the true right edge
+     (not flush against it) without jumping all the way over to sit
+     right next to the name/logo on the left either */
+  padding: 20px clamp(80px, 16vw, 260px) 20px var(--gutter);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.info-color-swatch.is-visible {
+  opacity: 1;
+}
+
+.info-color-swatch-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.info-color-swatch-name {
+  font-size: 14px;
+  font-weight: inherit;
+}
+
+/* a fixed width, not auto — HEX/RGB/CMYK (3 rows, in .swatch-top) and
+   PANTONE (1 row, down in .swatch-bottom) are two separate flex
+   contexts. Right-anchoring each via justify-content:space-between only
+   aligns whichever edge is pushed to the row's own right edge — since
+   each group's CONTENT width differs (three rows vs. one, and CMYK's
+   value is longer than HEX's), their LABEL-side edges would still land
+   at different x positions despite both blocks sitting flush right. A
+   shared fixed width removes that: both blocks' left edges (and thus
+   every label) land at the identical x position regardless of which
+   group a row happens to be in or how long its own value is. */
+.info-color-swatch-values {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 200px;
+  text-align: left;
+}
+
+/* fixed label-column width on top of the fixed block width — keeps
+   HEX/RGB/CMYK/PANTONE's VALUES aligned to their own shared column too,
+   not just the labels. 64px comfortably fits "PANTONE", the longest
+   label. */
+.info-color-value {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.info-color-value span:first-child {
+  flex: 0 0 64px;
+}
+
+.info-color-swatch-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.info-color-swatch-mark {
+  display: block;
+  width: clamp(60px, 10vw, 120px);
+}
+
+.info-color-swatch-mark svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 768px) {
+  .info-color-swatch {
+    min-height: 160px;
+    padding: 16px var(--gutter);
+  }
+
+  /* stays a row (name/mark left, values right) on mobile too, same as
+     .swatch-bottom — switching just this one to a stacked column broke
+     the whole point of the shared fixed width: .swatch-top's values
+     ended up left-aligned while .swatch-bottom's stayed right-aligned,
+     so HEX/RGB/CMYK no longer lined up with PANTONE under it. The width
+     shrinks instead, so it still fits next to the name on narrow screens. */
+  .info-color-swatch-values {
+    width: clamp(120px, 46vw, 200px);
+  }
+}
+
+/* the footer's own local color scheme — black text on the accent bg,
+   independent of whatever --ink the rest of the page is using */
+/* the background stays permanently opaque — no whole-element opacity
+   fade here. A fast scroll can outrun the IntersectionObserver callback
+   that would flip .is-visible, and during that gap a transparent footer
+   let body's own black background (set for this page specifically, see
+   body.page-info above) show straight through where the yellow should
+   be. The individual text pieces below already have their own translate
+   + fade reveal, which is the only animation that actually needs. */
+.info-footer {
+  --ink: var(--black);
+  background: var(--orange);
+  color: var(--black);
+  padding: 24px var(--gutter) 8px;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.info-footer-columns {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.info-footer-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-left: 6px;
+}
+
+.info-footer-col--thanks {
+  padding-left: 0;
+  padding-right: 6px;
+}
+
+.info-footer-col--links {
+  position: relative;
+}
+
+/* the "center grid line" — a short vertical divider between the two
+   columns, not a full-height border. A border-right on the column
+   itself ran the line edge-to-edge (top rule to bottom of footer) and,
+   where it met the top bar's horizontal rule at the corner, the two
+   overlapping 1px lines read as one noticeably thicker line — the
+   "double line glitch." Positioning it separately, inset from both
+   horizontal rules, keeps it from ever touching either one. */
+.info-footer-divider {
+  position: absolute;
+  left: 50%;
+  top: 40px;
+  bottom: 20px;
+  width: 1px;
+  background: var(--ink);
+}
+
+/* pushed to the bottom of its column (margin-top:auto) rather than
+   sitting right after the list — that's what makes Special Thanks'
+   shorter list and the Links column's list+mark both close off at the
+   exact same height, split into two segments same as the top bar
+   instead of one continuous line, for symmetry */
+.info-footer-rule--bottom {
+  margin-top: auto;
+}
+
+.info-footer-heading {
+  padding: 6px 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.info-footer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* every piece of footer text — items, headings, the build line, the
+   bottom links — shares this same translate-up + fade-in treatment,
+   toggled by the scroll observer in info.js alongside the per-character
+   stagger reveal, same re-animate-every-time rule as the rest of the
+   page */
+.info-footer-item,
+.info-footer-heading,
+.info-footer-build,
+.info-footer-bottom a {
+  opacity: 0;
+  transform: translateY(56px);
+  transition: opacity 520ms ease, transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.info-footer-item.is-visible,
+.info-footer-heading.is-visible,
+.info-footer-build.is-visible,
+.info-footer-bottom a.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.info-footer-item-text {
+  display: block;
+  padding: 2px 0;
+  color: inherit;
+  text-decoration: none;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+a.info-footer-item-text:hover {
+  text-decoration: underline;
+}
+
+/* fills nearly the full height left over in the Links column, between
+   the middle bar above it and the column's own bottom — sized by
+   HEIGHT (flex:1 + height:100% on the svg), not by a fixed width, so it
+   actually grows to fill that space instead of sitting at a flat size
+   with air around it. */
+.info-footer-mark {
+  flex: 1;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 0;
+}
+
+.info-footer-mark svg {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+}
+
+.info-footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0 0;
+  font-size: inherit;
+}
+
+.info-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.info-footer-links a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.info-footer-links a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  /* the title moves above the top rule entirely here, instead of
+     sitting beside the paragraph between the two rules like on desktop */
+  .info-dark-row--text {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "label"
+      "top"
+      "text"
+      "bottom";
+  }
+
+  .info-dark {
+    font-size: 16px;
+  }
+
+  .info-color {
+    font-size: 16px;
+  }
+
+  .info-footer {
+    font-size: 16px;
+  }
+
+  /* mobile's footer isn't the 2-column grid (buildMobileFooter() in
+     info.js renders a genuinely different, linear structure: Links,
+     Special Thanks, the mark, then Build by — none of the grid-column
+     insets apply here) */
+  .info-footer-col {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* big, full-width, roughly square — not the desktop height-fill
+     sizing (which needs a tall column with leftover space to fill into;
+     mobile's mark isn't nested in a column at all anymore) */
+  .info-footer-mark--mobile {
+    width: 100%;
+    margin: 8px 0;
+    padding: 0;
+    display: block;
+  }
+
+  .info-footer-mark--mobile svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
 }

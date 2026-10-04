@@ -14,3 +14,7 @@ dist-ssr
 *.sw?
 
 .env*
+
+# commercial/paid fonts — unused in the actual build (that's Space Mono,
+# which IS committed), never push these to this public repo
+src/assets/fonts/HelveticaNeueLTStd-*.otf

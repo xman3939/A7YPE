@@ -1,6 +1,7 @@
 import './style.css';
 import { render } from './router.js';
+import { runIntro } from './loader.js';
 
 window.addEventListener('DOMContentLoaded', () => {
-  render(location.pathname);
+  runIntro(() => render(location.pathname));
 });

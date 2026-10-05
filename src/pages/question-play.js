@@ -654,11 +654,20 @@ export default {
 
       board.innerHTML = linesHtml;
 
-      // measured AFTER insertion — half of each track's real rendered
-      // extent (it holds exactly 2 identical copies), not a guess
+      // computed analytically from the exact same unrounded cellSize
+      // used to set the CSS (NOT measured back from the DOM via
+      // track.scrollWidth/scrollHeight) — those return integer,
+      // browser-rounded pixel values, a small but real mismatch against
+      // the actual (sub-pixel-precise) rendered layout. That tiny gap
+      // between "what the wrap math thinks one copy's width is" and
+      // "what it actually is" is exactly the kind of thing that stays
+      // invisible almost every cycle and then occasionally doesn't —
+      // the intermittent stutter. Computing it directly removes the
+      // measurement step entirely, so there's nothing left to round.
+      const oneLineExtent = perLine * cellSize + (perLine - 1) * GRID_GAP;
       const lines = [...board.querySelectorAll('.scroll-line-track')].map(track => ({
         track,
-        extent: (scrollAxis === 'row' ? track.scrollWidth : track.scrollHeight) / 2,
+        extent: oneLineExtent,
         dir: Math.random() < 0.5 ? 1 : -1,
         speedMs: scrollSpeedMs * (0.8 + Math.random() * 0.4),
       }));

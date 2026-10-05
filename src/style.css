@@ -1563,6 +1563,8 @@ body.page-question-play .play-item {
 .play-board[data-layout='scroll'] {
   display: flex;
   flex-direction: column;
+  align-content: center;
+  justify-content: center;
   gap: var(--scroll-gap, 12px);
   padding: 0;
 }

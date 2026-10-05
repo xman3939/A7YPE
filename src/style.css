@@ -1515,7 +1515,18 @@ body.page-hashtag-play .menu-item-dot {
   padding: 0;
 }
 
+/* text-box-trim/text-box-edge (base .play-item rule, above) is a very new,
+   still-experimental CSS property — combined with jumble mode's per-tile
+   rotate() transform (the only place a .play-item ever rotates) it
+   produced jagged, sheared, sometimes fully illegible glyphs on iOS
+   Safari at high density (reported at round 21+, where a jumble round
+   can hit 400 overlapping rotated tiles). Dropping back to the browser's
+   normal text box for any rotated/chaos-layout item avoids the
+   combination entirely — costs a little of that fix's baseline-centering
+   precision here, worth it over text that can become unreadable. */
 .play-board[data-layout='chaos'] .play-item {
+  text-box-trim: none;
+  text-box-edge: auto;
   position: absolute;
   /* explicit, not left as "static position" fallback — with 30+ siblings
      all absolutely positioned and none given left/top, each one's

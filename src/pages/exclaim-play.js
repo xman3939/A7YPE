@@ -607,6 +607,14 @@ export default {
       gameOver = true;
       clearInterval(timerHandle);
       stopMotion();
+      // stopMotion() clears each item's GSAP transform (its only source of
+      // position in motion/chaos modes — items have no top/left, just x/y)
+      // but doesn't remove the items themselves, so for the ~380ms results
+      // screen takes to actually swap playEl's content, every item snaps
+      // to the board's top-left corner and sits there, fully visible —
+      // the "characters flash in the corner" glitch. Clearing the board
+      // right away removes them before that gap ever renders a frame.
+      board.innerHTML = '';
       const correct = round - 1;
       const totalClicks = correct + misses;
       const accuracy = totalClicks > 0 ? Math.round((correct / totalClicks) * 100) : 0;

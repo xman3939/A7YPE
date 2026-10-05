@@ -591,12 +591,11 @@ export default {
     // its own random direction and a little speed variance, so it reads
     // as independent strips rather than one uniform sheet sliding.
     //
-    // Only one strip actually carries the real target; every other
-    // strip, and BOTH copies in every strip (the real one included — its
-    // own duplicate must never show a second target), are pure
-    // distractors built straight from makeDistractor() rather than
-    // generateItems(), which always forces exactly one target into
-    // whatever count it's given.
+    // Only one strip actually carries the real target (via
+    // generateItems(), which guarantees exactly one); every other strip
+    // is pure distractors (makeDistractor()). Both copies of a strip
+    // render the SAME items array twice, not two independently-rolled
+    // sets — see the loop below for why that matters.
     function renderScrollRound(config) {
       const { minCell, scrollAxis, scrollSpeedMs } = config;
       const availableW = board.clientWidth || window.innerWidth;
@@ -625,14 +624,17 @@ export default {
       }
 
       const linesHtml = Array.from({ length: lineCount }, (_, li) => {
-        const primary = li === targetLine
+        const items = li === targetLine
           ? generateItems(perLine, config)
           : Array.from({ length: perLine }, () => makeDistractor(config));
-        // the duplicate copy is ALWAYS pure distractors, even on the
-        // target's own line — a second visible target would be
-        // unclickable-but-identical-looking, which just reads as broken
-        const duplicate = Array.from({ length: perLine }, () => makeDistractor(config));
-        const track = [...primary, ...duplicate].map(renderItem).join('');
+        // the duplicate has to be the SAME items, not a second
+        // independently-randomized set — if the glyphs differ, the
+        // instant the loop wraps reads as every character in the strip
+        // suddenly swapping to something else, which is exactly the
+        // "teleport" this was built to avoid. If this line holds the
+        // real target, both copies legitimately show it (clicking
+        // either one is correct) rather than trying to hide a second one.
+        const track = [...items, ...items].map(renderItem).join('');
         return `<div class="scroll-line"><div class="scroll-line-track">${track}</div></div>`;
       }).join('');
 

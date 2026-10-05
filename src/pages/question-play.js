@@ -636,9 +636,9 @@ export default {
       const scrollExtentPx = scrollAxis === 'row' ? availableW : availableH;
       const crossExtentPx = scrollAxis === 'row' ? availableH : availableW;
       // perLine boxes + gaps must sum to EXACTLY the viewport extent
-      // along the scroll axis, or the loop isn't seamless (see
-      // runScrollMotion) — solved for directly rather than just reusing
-      // plain grid's own per-cell size, which only fills its axis
+      // along the scroll axis, or the CSS loop (-50% keyframe, see
+      // style.css) isn't seamless — solved for directly rather than
+      // just reusing plain grid's own per-cell size, which only fills
       // approximately (grid lets 1fr tracks absorb any leftover space).
       const cellSize = (scrollExtentPx - (perLine - 1) * GRID_GAP) / perLine;
       const targetLine = Math.floor(Math.random() * lineCount);
@@ -677,62 +677,23 @@ export default {
 
       board.innerHTML = linesHtml;
 
-      // computed analytically from the exact same unrounded cellSize
-      // used to set the CSS (NOT measured back from the DOM via
-      // track.scrollWidth/scrollHeight) — those return integer,
-      // browser-rounded pixel values, a small but real mismatch against
-      // the actual (sub-pixel-precise) rendered layout. That tiny gap
-      // between "what the wrap math thinks one copy's width is" and
-      // "what it actually is" is exactly the kind of thing that stays
-      // invisible almost every cycle and then occasionally doesn't —
-      // the intermittent stutter. Computing it directly removes the
-      // measurement step entirely, so there's nothing left to round.
-      const oneLineExtent = perLine * cellSize + (perLine - 1) * GRID_GAP;
-      const lines = [...board.querySelectorAll('.scroll-line-track')].map(track => ({
-        track,
-        extent: oneLineExtent,
-        dir: Math.random() < 0.5 ? 1 : -1,
-        speedMs: scrollSpeedMs * (0.8 + Math.random() * 0.4),
-      }));
-
-      runScrollMotion(lines, scrollAxis);
-    }
-
-    // one shared rAF loop drives every strip — each wraps independently
-    // via (elapsed / speedMs) % 1, a value recomputed fresh every frame
-    // rather than ever actually resetting a transform back to 0 (which
-    // is what a CSS animation restarting its keyframe cycle does, and
-    // exactly where that version's visible snap came from). dir flips
-    // which half of the progress curve is used instead of flipping the
-    // sign of the transform itself — the DOM only ever has a trailing
-    // duplicate (not a leading one too), so the shift always has to stay
-    // negative; counting progress down instead of up for "reverse"
-    // strips produces the mirror-image motion using that same one-sided
-    // DOM structure.
-    function runScrollMotion(lines, axis) {
-      const start = performance.now();
-
-      function frame(now) {
-        const elapsed = now - start;
-        lines.forEach(line => {
-          const progress = (elapsed / line.speedMs) % 1;
-          const effective = line.dir < 0 ? progress : 1 - progress;
-          // rounded to a whole pixel — a continuously-changing SUB-pixel
-          // transform on text is genuinely more expensive than an
-          // integer one, since the browser may need to re-rasterize
-          // glyph antialiasing at the new fractional offset rather than
-          // just compositing the existing layer; with potentially
-          // hundreds of characters moving every frame across several
-          // strips at once, that adds up to real, visible jank. A whole
-          // pixel is imperceptible as a position difference but lets
-          // the compositor just shift the already-rendered layer.
-          const shift = Math.round(-effective * line.extent);
-          line.track.style.transform = axis === 'row' ? `translateX(${shift}px)` : `translateY(${shift}px)`;
-        });
-        flowRaf = requestAnimationFrame(frame);
-      }
-
-      flowRaf = requestAnimationFrame(frame);
+      // pure CSS animation, not a JS requestAnimationFrame loop — the
+      // previous version re-wrote every strip's transform from JS every
+      // single frame, which is real, avoidable main-thread work (and
+      // vulnerable to anything ELSE briefly busy on that thread) that a
+      // native CSS animation simply doesn't have, since the browser's
+      // compositor drives it independently. The duplicate-content bug
+      // (different random glyphs in each copy) was the actual cause of
+      // the original "teleport" — not the CSS version's percentage
+      // timing, which was the wrong thing blamed at the time. That's
+      // fixed now (both copies are the literal same items), so the
+      // simpler, cheaper CSS approach should just work. Direction/speed
+      // are still randomized per strip, just set once here as plain
+      // animation-direction/-duration rather than recomputed every frame.
+      [...board.querySelectorAll('.scroll-line-track')].forEach(track => {
+        track.style.animationDirection = Math.random() < 0.5 ? 'normal' : 'reverse';
+        track.style.animationDuration = `${Math.round(scrollSpeedMs * (0.8 + Math.random() * 0.4))}ms`;
+      });
     }
 
     // re-rolls a dev-forced motion config's pattern (bounce/phase) and

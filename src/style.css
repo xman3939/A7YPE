@@ -1583,12 +1583,17 @@ body.page-question-play .play-item {
 
 /* every strip's items are rendered twice back to back (see
    renderScrollRound) so there's always a duplicate ready to slide into
-   the spot the original just vacated. The actual motion — direction,
-   speed, the wrap itself — is driven entirely from JS (runScrollMotion)
-   via a direct transform set every animation frame, not a CSS
-   @keyframes loop: a percentage-based animation resetting its cycle
-   produced a visible jump/teleport instead of a seamless wrap. This is
-   just the static layout; transform is inline, set per-frame. */
+   the spot the original just vacated. The motion is a plain CSS
+   animation now, not a JS requestAnimationFrame loop rewriting
+   transform every frame — that was real, avoidable main-thread work
+   (and the likely source of stutter a timing/math fix alone couldn't
+   touch), where a native CSS animation just runs on the compositor
+   independent of whatever else the main thread is doing. The
+   percentage-based wrap looks seamless now that both copies are
+   guaranteed to be the literal same content (see renderScrollRound) —
+   a mismatch there, not the CSS timing itself, was the real cause of
+   the earlier visible "teleport". animation-duration/-direction are
+   set per strip (inline, once, at render time) for the stagger. */
 .scroll-line-track {
   display: flex;
   flex-direction: row;
@@ -1609,10 +1614,7 @@ body.page-question-play .play-item {
   left: 0;
   bottom: 0;
   width: max-content;
-  /* promotes each strip to its own compositor layer up front, instead
-     of the browser only doing that the moment the first transform
-     lands — avoids a layer-promotion cost spike on an early frame that
-     can itself read as a stutter right as a round starts */
+  animation: scroll-track-x var(--scroll-speed, 6000ms) linear infinite;
   will-change: transform;
 }
 
@@ -1622,6 +1624,17 @@ body.page-question-play .play-item {
   right: 0;
   width: auto;
   height: max-content;
+  animation-name: scroll-track-y;
+}
+
+@keyframes scroll-track-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes scroll-track-y {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
 }
 
 /* the SCROLL axis (the one items travel along) is the exact computed

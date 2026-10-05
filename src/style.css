@@ -1593,6 +1593,21 @@ body.page-question-play .play-item {
   display: flex;
   flex-direction: row;
   gap: var(--scroll-gap, 12px);
+  /* pinned directly against .scroll-line's own edges (position:relative)
+     rather than given a plain height — a plain height would be auto
+     (content-sized) here, and percentage heights on this track's own
+     children don't resolve against an auto-height ancestor, which is
+     why items filling their strip via height:100% weren't actually
+     working. Absolute + two opposite edges set to 0 gives this an
+     exact, reliable cross-axis size no matter what's inside it: top+
+     left+bottom pins height to .scroll-line's real height (row axis,
+     width stays content-driven via max-content below for the scroll
+     axis); the column-axis override further down swaps which pair of
+     edges is pinned. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
   width: max-content;
   /* promotes each strip to its own compositor layer up front, instead
      of the browser only doing that the moment the first transform
@@ -1603,18 +1618,27 @@ body.page-question-play .play-item {
 
 .play-board[data-layout='scroll'][data-scroll-axis='column'] .scroll-line-track {
   flex-direction: column;
+  bottom: auto;
+  right: 0;
   width: auto;
   height: max-content;
 }
 
-/* box size is its own variable, separate from --item-font-size (the
-   glyph itself, smaller — see renderScrollRound) — perLine of these
-   boxes plus their gaps has to sum to EXACTLY the strip's own viewport
-   width/height for the loop to be gapless, which only holds if the box
-   size is driven by the same number the column/row math itself used. */
+/* the SCROLL axis (the one items travel along) is the exact computed
+   --scroll-cell-size — perLine boxes + gaps have to sum to precisely
+   the strip's own viewport extent for the loop to be gapless, which
+   only holds if every box is driven by that same number. The CROSS
+   axis is just 100% of whatever the strip's own (independently-fit)
+   flex share actually is — not a separate fixed size that could end up
+   bigger than the room available and get clipped. */
 .scroll-line-track .play-item {
   flex: none;
   width: var(--scroll-cell-size, 32px);
+  height: 100%;
+}
+
+.play-board[data-layout='scroll'][data-scroll-axis='column'] .scroll-line-track .play-item {
+  width: 100%;
   height: var(--scroll-cell-size, 32px);
 }
 

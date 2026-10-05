@@ -602,22 +602,20 @@ export default {
       const availableW = board.clientWidth || window.innerWidth;
       const availableH = board.clientHeight || window.innerHeight;
 
-      // sequential fit, not the 2D simultaneous one regular grid mode
-      // uses — the two axes here aren't interchangeable the way grid's
-      // columns/rows are. The SCROLL axis has to come first and be
-      // exact (perLine boxes + gaps summing to precisely the viewport
-      // extent is what makes the loop seamless — see runScrollMotion),
-      // so cellSize is derived from it alone. The CROSS axis then has
-      // to use that exact same cellSize to decide how many strips fit —
-      // computing it independently (the old approach) could size a
-      // strip shorter/narrower than cellSize itself, clipping every
-      // item in it, the target included, against .scroll-line's
-      // overflow:hidden.
+      // the two axes are independent, not a 2D simultaneous fit like
+      // grid mode's columns/rows. SCROLL axis: perLine items + gaps
+      // must sum to EXACTLY the viewport extent, or the loop isn't
+      // seamless (see runScrollMotion) — cellSize is solved for that
+      // directly. CROSS axis (how many strips total): a normal
+      // independent fit, same floor pattern grid/jumble already use —
+      // deliberately NOT derived from cellSize (that was crushing the
+      // strip count whenever cellSize came out large).
       const scrollExtentPx = scrollAxis === 'row' ? availableW : availableH;
       const crossExtentPx = scrollAxis === 'row' ? availableH : availableW;
       const perLine = Math.max(2, Math.floor((scrollExtentPx + GRID_GAP) / (minCell + GRID_GAP)));
       const cellSize = (scrollExtentPx - (perLine - 1) * GRID_GAP) / perLine;
-      const lineCount = Math.max(1, Math.floor((crossExtentPx + GRID_GAP) / (cellSize + GRID_GAP)));
+      const CROSS_MIN = Math.min(Math.max(30, window.innerHeight * 0.06), 56);
+      const lineCount = Math.max(1, Math.floor((crossExtentPx + GRID_GAP) / (CROSS_MIN + GRID_GAP)));
 
       const targetLine = Math.floor(Math.random() * lineCount);
 
@@ -625,7 +623,13 @@ export default {
       board.dataset.scrollAxis = scrollAxis;
       board.style.gridTemplateColumns = '';
       board.style.setProperty('--scroll-cell-size', `${cellSize}px`);
-      board.style.setProperty('--item-font-size', `${Math.round(cellSize * 0.6)}px`);
+      // font sized off the SMALLER of the two axes — the scroll axis's
+      // exact cellSize, or this strip's own (independently-fit) cross-
+      // axis share, whichever is tighter, so the glyph can never be
+      // bigger than the room its own strip actually has top to bottom
+      // (row axis) or side to side (column axis).
+      const crossCellSize = (crossExtentPx - (lineCount - 1) * GRID_GAP) / lineCount;
+      board.style.setProperty('--item-font-size', `${Math.round(Math.min(cellSize, crossCellSize) * 0.6)}px`);
       board.style.setProperty('--scroll-gap', `${GRID_GAP}px`);
 
       function renderItem(item) {

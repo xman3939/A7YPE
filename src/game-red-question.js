@@ -161,14 +161,15 @@ function motionExtras() {
 // row (or column) continuously scrolls through itself, wrapping
 // seamlessly rather than bouncing — same "phase" idea chaos-wrap already
 // uses, just applied as a rigid per-line shift instead of per-item.
-// Speed is the difficulty knob: one full loop takes less time the deeper
-// past its round-11 debut the game gets, floored so it never becomes
-// physically impossible to track.
+// Direction is rolled per-strip in question-play.js itself (staggered,
+// not a single board-wide flag) — this is just the base speed, the
+// difficulty knob: one full loop takes less time the deeper past its
+// round-11 debut the game gets, floored so it never becomes physically
+// impossible to track. Each strip adds its own +/-20% on top of this.
 function scrollExtras(round) {
   const depth = Math.max(round - 11, 0);
   return {
     scrollAxis: Math.random() < 0.5 ? 'row' : 'column',
-    scrollReverse: Math.random() < 0.5,
     scrollSpeedMs: Math.max(9000 - depth * 300, 2500),
   };
 }

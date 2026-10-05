@@ -1580,37 +1580,24 @@ body.page-question-play .play-item {
 }
 
 /* every strip's items are rendered twice back to back (see
-   renderScrollRound) — animating exactly one copy's extent (-50%) before
-   looping is the classic infinite-marquee trick: the reset is invisible
-   because the duplicate copy is already sitting where the original just
-   was. scroll-speed/scroll-gap are set per round (faster = harder). */
+   renderScrollRound) so there's always a duplicate ready to slide into
+   the spot the original just vacated. The actual motion — direction,
+   speed, the wrap itself — is driven entirely from JS (runScrollMotion)
+   via a direct transform set every animation frame, not a CSS
+   @keyframes loop: a percentage-based animation resetting its cycle
+   produced a visible jump/teleport instead of a seamless wrap. This is
+   just the static layout; transform is inline, set per-frame. */
 .scroll-line-track {
   display: flex;
   flex-direction: row;
   gap: var(--scroll-gap, 12px);
   width: max-content;
-  animation: scroll-track-x var(--scroll-speed, 6000ms) linear infinite;
 }
 
 .play-board[data-layout='scroll'][data-scroll-axis='column'] .scroll-line-track {
   flex-direction: column;
   width: auto;
   height: max-content;
-  animation-name: scroll-track-y;
-}
-
-.play-board[data-layout='scroll'][data-scroll-reverse='true'] .scroll-line-track {
-  animation-direction: reverse;
-}
-
-@keyframes scroll-track-x {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-@keyframes scroll-track-y {
-  from { transform: translateY(0); }
-  to { transform: translateY(-50%); }
 }
 
 .scroll-line-track .play-item {

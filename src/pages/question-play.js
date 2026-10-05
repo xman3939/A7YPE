@@ -72,10 +72,12 @@ const DEV_ROUNDS = [
   { key: 'motion-small-few', label: 'Motion: small, few', config: { mode: 'motion', motionCount: 45, motionItemSize: 70, mixFraction: 0.5, axis: 'color' } },
   { key: 'motion-small-medium', label: 'Motion: small, medium', config: { mode: 'motion', motionCount: 70, motionItemSize: 70, mixFraction: 0.6, axis: 'color' } },
   { key: 'motion-small-many', label: 'Motion: small, many', config: { mode: 'motion', motionCount: 150, motionItemSize: 70, mixFraction: 0.7, axis: 'color' } },
-  { key: 'scroll-row-slow', label: 'Scroll: row, slow', config: { mode: 'scroll', desiredCount: 60, minCell: 46, scrollAxis: 'row', scrollReverse: false, scrollSpeedMs: 9000, mixFraction: 0.6, axis: 'color' } },
-  { key: 'scroll-row-fast', label: 'Scroll: row, fast', config: { mode: 'scroll', desiredCount: 90, minCell: 36, scrollAxis: 'row', scrollReverse: true, scrollSpeedMs: 2500, mixFraction: 0.8, axis: 'color' } },
-  { key: 'scroll-column-slow', label: 'Scroll: column, slow', config: { mode: 'scroll', desiredCount: 60, minCell: 46, scrollAxis: 'column', scrollReverse: false, scrollSpeedMs: 9000, mixFraction: 0.6, axis: 'color' } },
-  { key: 'scroll-column-fast', label: 'Scroll: column, fast', config: { mode: 'scroll', desiredCount: 90, minCell: 36, scrollAxis: 'column', scrollReverse: true, scrollSpeedMs: 2500, mixFraction: 0.8, axis: 'color' } },
+  // direction is rolled per-strip now (staggered, not one board-wide
+  // reverse flag) — these are purely speed/axis shortcuts
+  { key: 'scroll-row-slow', label: 'Scroll: row, slow', config: { mode: 'scroll', desiredCount: 60, minCell: 46, scrollAxis: 'row', scrollSpeedMs: 9000, mixFraction: 0.6, axis: 'color' } },
+  { key: 'scroll-row-fast', label: 'Scroll: row, fast', config: { mode: 'scroll', desiredCount: 90, minCell: 36, scrollAxis: 'row', scrollSpeedMs: 2500, mixFraction: 0.8, axis: 'color' } },
+  { key: 'scroll-column-slow', label: 'Scroll: column, slow', config: { mode: 'scroll', desiredCount: 60, minCell: 46, scrollAxis: 'column', scrollSpeedMs: 9000, mixFraction: 0.6, axis: 'color' } },
+  { key: 'scroll-column-fast', label: 'Scroll: column, fast', config: { mode: 'scroll', desiredCount: 90, minCell: 36, scrollAxis: 'column', scrollSpeedMs: 2500, mixFraction: 0.8, axis: 'color' } },
 ];
 
 function esc(str) {
@@ -268,9 +270,8 @@ export default {
       board.style.removeProperty('width');
       // renderScrollRound's own leftovers — board is reused across every
       // round, so a grid/jumble/motion round right after a scroll one
-      // would otherwise inherit its axis/reverse attrs or leftover gap
+      // would otherwise inherit its axis attr or leftover gap
       delete board.dataset.scrollAxis;
-      delete board.dataset.scrollReverse;
       board.style.removeProperty('--scroll-gap');
     }
 
@@ -569,13 +570,26 @@ export default {
 
     // "scroll" — a real grid, unlike motion/jumble, but every row (or
     // column, config.scrollAxis) is its own independently-scrolling
-    // strip: a CSS animation shifts it continuously one way, wrapping
-    // seamlessly rather than bouncing. The classic infinite-marquee
-    // trick makes that wrap invisible — each strip's items are rendered
-    // TWICE back to back, then the animation only ever needs to slide
-    // exactly one copy's width/height (-50%) before looping, so the
-    // instant it resets, the duplicate copy is already sitting in
-    // exactly the position the original just vacated.
+    // strip, each wrapping seamlessly through itself (phase/portal
+    // style — the one that exits the bottom/right re-enters at the
+    // top/left, never bounces) rather than looping back instantly. Every
+    // strip's items are rendered TWICE back to back (the classic
+    // infinite-marquee trick) so there's always a duplicate ready to
+    // slide into the spot the original just vacated.
+    //
+    // Driven by requestAnimationFrame against measured pixel extents,
+    // not a CSS @keyframes/-50% animation — a percentage transform is
+    // only as seamless as the browser's layout engine resolving it in
+    // perfect sync with how it actually laid out the duplicated content,
+    // and that was producing a visible jump/teleport instead of a clean
+    // wrap. Measuring each strip's own real rendered size and computing
+    // the exact wrap point fresh every frame removes that dependency
+    // entirely — same approach chaos-bounce/chaos-wrap's "phase" pattern
+    // already uses reliably elsewhere in this file.
+    //
+    // Staggered, not one board-wide direction/speed — every strip gets
+    // its own random direction and a little speed variance, so it reads
+    // as independent strips rather than one uniform sheet sliding.
     //
     // Only one strip actually carries the real target; every other
     // strip, and BOTH copies in every strip (the real one included — its
@@ -584,7 +598,7 @@ export default {
     // generateItems(), which always forces exactly one target into
     // whatever count it's given.
     function renderScrollRound(config) {
-      const { minCell, scrollAxis, scrollReverse, scrollSpeedMs } = config;
+      const { minCell, scrollAxis, scrollSpeedMs } = config;
       const availableW = board.clientWidth || window.innerWidth;
       const availableH = board.clientHeight || window.innerHeight;
       const maxFitColumns = Math.max(1, Math.floor((availableW + GRID_GAP) / (minCell + GRID_GAP)));
@@ -601,15 +615,9 @@ export default {
 
       board.dataset.layout = 'scroll';
       board.dataset.scrollAxis = scrollAxis;
-      if (scrollReverse) {
-        board.dataset.scrollReverse = 'true';
-      } else {
-        delete board.dataset.scrollReverse;
-      }
       board.style.gridTemplateColumns = '';
       const itemSize = scrollAxis === 'row' ? availableW / columns : availableH / rows;
       board.style.setProperty('--item-font-size', `${Math.round(itemSize * 0.6)}px`);
-      board.style.setProperty('--scroll-speed', `${scrollSpeedMs}ms`);
       board.style.setProperty('--scroll-gap', `${GRID_GAP}px`);
 
       function renderItem(item) {
@@ -629,6 +637,45 @@ export default {
       }).join('');
 
       board.innerHTML = linesHtml;
+
+      // measured AFTER insertion — half of each track's real rendered
+      // extent (it holds exactly 2 identical copies), not a guess
+      const lines = [...board.querySelectorAll('.scroll-line-track')].map(track => ({
+        track,
+        extent: (scrollAxis === 'row' ? track.scrollWidth : track.scrollHeight) / 2,
+        dir: Math.random() < 0.5 ? 1 : -1,
+        speedMs: scrollSpeedMs * (0.8 + Math.random() * 0.4),
+      }));
+
+      runScrollMotion(lines, scrollAxis);
+    }
+
+    // one shared rAF loop drives every strip — each wraps independently
+    // via (elapsed / speedMs) % 1, a value recomputed fresh every frame
+    // rather than ever actually resetting a transform back to 0 (which
+    // is what a CSS animation restarting its keyframe cycle does, and
+    // exactly where that version's visible snap came from). dir flips
+    // which half of the progress curve is used instead of flipping the
+    // sign of the transform itself — the DOM only ever has a trailing
+    // duplicate (not a leading one too), so the shift always has to stay
+    // negative; counting progress down instead of up for "reverse"
+    // strips produces the mirror-image motion using that same one-sided
+    // DOM structure.
+    function runScrollMotion(lines, axis) {
+      const start = performance.now();
+
+      function frame(now) {
+        const elapsed = now - start;
+        lines.forEach(line => {
+          const progress = (elapsed / line.speedMs) % 1;
+          const effective = line.dir < 0 ? progress : 1 - progress;
+          const shift = -effective * line.extent;
+          line.track.style.transform = axis === 'row' ? `translateX(${shift}px)` : `translateY(${shift}px)`;
+        });
+        flowRaf = requestAnimationFrame(frame);
+      }
+
+      flowRaf = requestAnimationFrame(frame);
     }
 
     // re-rolls a dev-forced motion config's pattern (bounce/phase) and

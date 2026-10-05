@@ -9,11 +9,19 @@ const GRID_GAP = 12;
 // as flat numbers with no idea what viewport they'll render into — the
 // same item count/size reads far denser on a narrow mobile screen than
 // on a spacious desktop one, "huge many" especially (140px items, up to
-// 260 of them). Trimming the count on mobile only (never the item size,
-// which is what actually makes a tile "huge" — this is about clutter,
-// not shrinking anything) eases that without touching the desktop
-// difficulty curve at all.
+// 260 of them). Trimming the count on mobile eases the clutter side of
+// that without touching the desktop difficulty curve at all.
 const MOBILE_MOTION_SCALE = 0.7;
+// huge (140px) and medium (100px) tiles also just read way too big on a
+// narrow mobile screen, independent of clutter — desktop's board is
+// spacious enough for them as-is, so this only kicks in on mobile.
+// small (70px) isn't in here — it already reads fine, left untouched.
+const MOBILE_MOTION_SIZE = { 140: 90, 100: 80 };
+
+function getMotionItemSize(size) {
+  if (isDesktop()) return size;
+  return MOBILE_MOTION_SIZE[size] ?? size;
+}
 
 const SWIPE_MS = 450;
 const EXIT_FADE_MS = 400;
@@ -483,7 +491,7 @@ export default {
       const items = generateItems(motionCount, config);
       board.dataset.layout = 'chaos';
       board.style.gridTemplateColumns = '';
-      board.style.setProperty('--item-font-size', `${config.motionItemSize}px`);
+      board.style.setProperty('--item-font-size', `${getMotionItemSize(config.motionItemSize)}px`);
       board.style.marginLeft = 'calc(-1 * var(--gutter))';
       board.style.marginRight = 'calc(-1 * var(--gutter))';
       board.style.width = 'calc(100% + 2 * var(--gutter))';

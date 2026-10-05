@@ -275,13 +275,8 @@ export function getRoundConfig(round) {
 
 // targetChar/targetIsRed come from question-play.js's current target (see
 // pickNewTarget above) — config is expected to carry them on top of
-// whatever getRoundConfig() returned, merged in by the caller. Exported
-// for "scroll" mode (question-play.js) — every scroll line needs a
-// duplicate copy of itself for its CSS loop to wrap seamlessly, and that
-// duplicate must never contain a second target, so it's built directly
-// from distractors rather than going through generateItems() (which
-// always forces exactly one target into whatever it returns).
-export function makeDistractor({ mixFraction, axis, motionColorMode, targetChar, targetIsRed }) {
+// whatever getRoundConfig() returned, merged in by the caller
+function makeDistractor({ mixFraction, axis, motionColorMode, targetChar, targetIsRed }) {
   if (motionColorMode === 'all-white') {
     // color is never the tell for symbol here — every distractor is
     // forced to the WRONG color regardless of the usual mixFraction/axis

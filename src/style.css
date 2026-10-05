@@ -1555,110 +1555,12 @@ body.page-question-play .play-item {
   font-size: var(--item-font-size, 56px);
 }
 
-/* "scroll" mode (question-play.js's renderScrollRound) — a real grid,
-   just split into independently-scrolling strips: row axis stacks
-   strips top to bottom, each one scrolling left/right; column axis
-   stacks them left to right, each scrolling up/down (toggled by
-   data-scroll-axis, set alongside data-layout='scroll'). */
-.play-board[data-layout='scroll'] {
-  display: flex;
-  flex-direction: column;
-  align-content: center;
-  justify-content: center;
-  gap: var(--scroll-gap, 12px);
-  padding: 0;
-}
-
-.play-board[data-layout='scroll'][data-scroll-axis='column'] {
-  flex-direction: row;
-}
-
-.scroll-line {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  position: relative;
-}
-
-/* every strip's items are rendered twice back to back (see
-   renderScrollRound) so there's always a duplicate ready to slide into
-   the spot the original just vacated. The motion is a plain CSS
-   animation now, not a JS requestAnimationFrame loop rewriting
-   transform every frame — that was real, avoidable main-thread work
-   (and the likely source of stutter a timing/math fix alone couldn't
-   touch), where a native CSS animation just runs on the compositor
-   independent of whatever else the main thread is doing. The
-   percentage-based wrap looks seamless now that both copies are
-   guaranteed to be the literal same content (see renderScrollRound) —
-   a mismatch there, not the CSS timing itself, was the real cause of
-   the earlier visible "teleport". animation-duration/-direction are
-   set per strip (inline, once, at render time) for the stagger. */
-.scroll-line-track {
-  display: flex;
-  flex-direction: row;
-  gap: var(--scroll-gap, 12px);
-  /* pinned directly against .scroll-line's own edges (position:relative)
-     rather than given a plain height — a plain height would be auto
-     (content-sized) here, and percentage heights on this track's own
-     children don't resolve against an auto-height ancestor, which is
-     why items filling their strip via height:100% weren't actually
-     working. Absolute + two opposite edges set to 0 gives this an
-     exact, reliable cross-axis size no matter what's inside it: top+
-     left+bottom pins height to .scroll-line's real height (row axis,
-     width stays content-driven via max-content below for the scroll
-     axis); the column-axis override further down swaps which pair of
-     edges is pinned. */
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: max-content;
-  animation: scroll-track-x var(--scroll-speed, 6000ms) linear infinite;
-  will-change: transform;
-}
-
-.play-board[data-layout='scroll'][data-scroll-axis='column'] .scroll-line-track {
-  flex-direction: column;
-  bottom: auto;
-  right: 0;
-  width: auto;
-  height: max-content;
-  animation-name: scroll-track-y;
-}
-
-/* --scroll-shift (renderScrollRound) is the exact px distance, set
-   directly from JS — not -50%, which would ask the browser to
-   re-measure the track's own live rendered width and halve it,
-   reintroducing exactly the sub-pixel rounding noise this was built to
-   avoid (see the comment where --scroll-shift is set). */
-@keyframes scroll-track-x {
-  from { transform: translateX(0); }
-  to { transform: translateX(var(--scroll-shift, -50%)); }
-}
-
-@keyframes scroll-track-y {
-  from { transform: translateY(0); }
-  to { transform: translateY(var(--scroll-shift, -50%)); }
-}
-
-/* the SCROLL axis (the one items travel along) is the exact computed
-   --scroll-cell-size — perLine boxes + gaps have to sum to precisely
-   the strip's own viewport extent for the loop to be gapless, which
-   only holds if every box is driven by that same number. The CROSS
-   axis is just 100% of whatever the strip's own (independently-fit)
-   flex share actually is — not a separate fixed size that could end up
-   bigger than the room available and get clipped. */
-.scroll-line-track .play-item {
-  flex: none;
-  width: var(--scroll-cell-size, 32px);
-  height: 100%;
-}
-
-.play-board[data-layout='scroll'][data-scroll-axis='column'] .scroll-line-track .play-item {
-  width: 100%;
-  height: var(--scroll-cell-size, 32px);
-}
+/* "scroll" mode (question-play.js's renderScrollRound) reuses the plain
+   chaos layout (data-layout='chaos', same as jumble/motion) — every
+   character is independently positioned and animated via GSAP, same
+   mechanism as chaos-bounce/chaos-wrap, just all sharing one uniform
+   velocity instead of each having its own random one. No bespoke
+   layout/CSS needed for it at all. */
 
 .play-board[data-mode='color'] .play-item.is-odd {
   color: var(--orange);

@@ -2,7 +2,7 @@ import gsap from 'gsap';
 import { renderChrome, initChrome, isDesktop } from './chrome.js';
 import { fragmentElement, runReveal, runUnreveal, WAVE } from '../text-reveal.js';
 import { showResultsScreen } from '../results-screen.js';
-import { START_TIME, ROUND_RESET_EVERY, CORRECT_BONUS, POINTS_PER_ROUND, MISS_PENALTY, WIN_SCORE, getRoundConfig, getBaseTime, generateItems, pickNewTarget, makeDistractor } from '../game-red-question.js';
+import { START_TIME, ROUND_RESET_EVERY, CORRECT_BONUS, POINTS_PER_ROUND, MISS_PENALTY, WIN_SCORE, getRoundConfig, getBaseTime, generateItems, pickNewTarget } from '../game-red-question.js';
 
 const GRID_GAP = 12;
 // motion tiers (game-red-question.js's MOTION_TIERS) are sized/counted
@@ -314,13 +314,6 @@ export default {
       board.style.removeProperty('margin-left');
       board.style.removeProperty('margin-right');
       board.style.removeProperty('width');
-      // renderScrollRound's own leftovers — board is reused across every
-      // round, so a grid/jumble/motion round right after a scroll one
-      // would otherwise inherit its axis attr or leftover gap
-      delete board.dataset.scrollAxis;
-      board.style.removeProperty('--scroll-gap');
-      board.style.removeProperty('--scroll-cell-size');
-      board.style.removeProperty('--scroll-shift');
     }
 
     // shows the current target character huge and alone, centered in the
@@ -592,125 +585,86 @@ export default {
     // Driven by requestAnimationFrame against measured pixel extents,
     // not a CSS @keyframes/-50% animation — a percentage transform is
     // only as seamless as the browser's layout engine resolving it in
-    // perfect sync with how it actually laid out the duplicated content,
-    // and that was producing a visible jump/teleport instead of a clean
-    // wrap. Measuring each strip's own real rendered size and computing
-    // the exact wrap point fresh every frame removes that dependency
-    // entirely — same approach chaos-bounce/chaos-wrap's "phase" pattern
-    // already uses reliably elsewhere in this file.
+    // perfect sync with how it actually laid out the duplicated content.
     //
-    // Staggered, not one board-wide direction/speed — every strip gets
-    // its own random direction and a little speed variance, so it reads
-    // as independent strips rather than one uniform sheet sliding.
-    //
-    // Only one strip actually carries the real target (via
-    // generateItems(), which guarantees exactly one); every other strip
-    // is pure distractors (makeDistractor()). Both copies of a strip
-    // render the SAME items array twice, not two independently-rolled
-    // sets — see the loop below for why that matters.
+    // Scrapped the whole duplicated-strip/seam-math approach — every
+    // fix just uncovered another layer of the same problem. Each
+    // character now just moves independently, all at the same uniform
+    // speed/direction (one shared velocity per round, not per-strip),
+    // wrapping via simple modulo teleport when it exits the board —
+    // literally the same mechanism chaos-bounce/chaos-wrap already use
+    // reliably elsewhere in this file (GSAP gsap.set() every frame),
+    // just constrained to one steady direction instead of per-item
+    // random velocity. No duplicated content, no seam, nothing to
+    // measure or get subtly wrong.
     function renderScrollRound(config) {
       const { scrollAxis, scrollSpeedMs } = config;
       const availableW = board.clientWidth || window.innerWidth;
       const availableH = board.clientHeight || window.innerHeight;
 
-      // the SAME fit plain grid mode uses for this config — scroll mode
-      // used to compute its own separate, density-maximizing fit (as
-      // many items as physically fit), producing a far denser grid than
-      // intended. desiredCount is halved first, specifically for this
-      // mode: every strip's items are rendered TWICE (the duplicate
-      // copy the seamless loop needs), so at the SAME desiredCount,
-      // scroll mode's actual DOM/render workload is already ~2x grid
-      // mode's — halving the target count up front is what makes the
-      // two modes feel comparably dense instead of scroll reading as
-      // twice as busy. perLine is the scroll axis's count (items each
-      // strip scrolls through); lineCount is the cross axis's (how many
-      // strips total) — row axis scrolls through columns-many items per
-      // strip with rows-many strips; column axis is the transpose.
-      const { columns, rows } = computeGridDims(
-        { ...config, desiredCount: Math.max(Math.round(config.desiredCount * 0.5), 4) },
-        availableW,
-        availableH
-      );
-      const perLine = scrollAxis === 'row' ? columns : rows;
-      const lineCount = scrollAxis === 'row' ? rows : columns;
+      // the exact same fit plain grid mode uses for this config — no
+      // more duplication, so no more density compensation needed either
+      const { columns, rows } = computeGridDims(config, availableW, availableH);
+      const count = columns * rows;
+      const cellW = availableW / columns;
+      const cellH = availableH / rows;
 
-      const scrollExtentPx = scrollAxis === 'row' ? availableW : availableH;
-      const crossExtentPx = scrollAxis === 'row' ? availableH : availableW;
-      // the CSS -50% keyframe splits the TRACK's total width exactly in
-      // half — but the track holds 2*perLine items with a gap between
-      // every adjacent pair, including the one sitting right at the
-      // seam between the two copies, so the real gap count is
-      // (2*perLine - 1), not 2*(perLine - 1). That's an ODD number of
-      // gaps split by an exact half, which leaves a fixed half-gap of
-      // error landing at that one seam position every single cycle —
-      // the consistent "one character stutters on every line" symptom.
-      // Solving with (perLine - 0.5) gaps instead of (perLine - 1)
-      // folds that seam gap's own half-width into the budget up front,
-      // so half the TRUE total width lands exactly on scrollExtentPx
-      // with nothing left over.
-      const cellSize = (scrollExtentPx - (perLine - 0.5) * GRID_GAP) / perLine;
-      const targetLine = Math.floor(Math.random() * lineCount);
-
-      board.dataset.layout = 'scroll';
-      board.dataset.scrollAxis = scrollAxis;
+      board.dataset.layout = 'chaos';
       board.style.gridTemplateColumns = '';
-      board.style.setProperty('--scroll-cell-size', `${cellSize}px`);
-      // the exact px distance the loop travels — NOT a CSS -50%, which
-      // asks the browser to re-measure the track's own LIVE rendered
-      // width and halve it. That measurement goes through the flex
-      // layout engine's own device-pixel rounding (individual item/gap
-      // positions can each round by a fraction of a px, accumulating
-      // across perLine items), picking up sub-pixel noise this exact
-      // JS number never had. Driving the keyframe off this same number
-      // directly removes that re-measurement step entirely.
-      board.style.setProperty('--scroll-shift', `${-scrollExtentPx}px`);
-      // font sized off the SMALLER of the two axes — the scroll axis's
-      // exact cellSize, or this strip's own cross-axis share, whichever
-      // is tighter, so the glyph can never be bigger than the room its
-      // own strip actually has top to bottom (row axis) or side to side
-      // (column axis).
-      const crossCellSize = (crossExtentPx - (lineCount - 1) * GRID_GAP) / lineCount;
-      board.style.setProperty('--item-font-size', `${Math.round(Math.min(cellSize, crossCellSize) * 0.6)}px`);
-      board.style.setProperty('--scroll-gap', `${GRID_GAP}px`);
+      board.style.setProperty('--item-font-size', `${Math.round(Math.min(cellW, cellH) * 0.6)}px`);
 
-      function renderItem(item) {
-        return `<button type="button" class="play-item${item.isRed ? ' is-red' : ''}${item.isTarget ? ' is-target' : ''}">${esc(item.char)}</button>`;
+      const items = generateItems(count, config);
+      board.innerHTML = items
+        .map(item => `<button type="button" class="play-item${item.isRed ? ' is-red' : ''}${item.isTarget ? ' is-target' : ''}">${esc(item.char)}</button>`)
+        .join('');
+
+      const els = [...board.querySelectorAll('.play-item')];
+      const movers = els.map((el, i) => {
+        const col = i % columns;
+        const row = Math.floor(i / columns);
+        const baseX = (col + 0.5) * cellW;
+        const baseY = (row + 0.5) * cellH;
+        gsap.set(el, { xPercent: -50, yPercent: -50, x: baseX, y: baseY });
+        return { el, baseX, baseY };
+      });
+
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const extentPx = scrollAxis === 'row' ? availableW : availableH;
+      // scrollSpeedMs is "time for one full lap" (same meaning it's had
+      // all along, just reused directly here instead of feeding a CSS
+      // duration) — converted to a flat px/sec so every character
+      // covers the same distance in the same time regardless of extent
+      const speedPxPerSec = extentPx / (scrollSpeedMs / 1000);
+
+      runScrollConveyor(movers, scrollAxis, dir, speedPxPerSec, extentPx);
+    }
+
+    // every mover shares the exact same dir/speedPxPerSec/extentPx —
+    // that's the "uniform speed" part. Position wraps via plain modulo
+    // (kept positive by adding extentPx before the final %, since JS's
+    // % can return negative for a negative dividend) rather than an
+    // edge-check-and-snap like chaos-bounce/wrap's bounce mode does —
+    // there's no "edge" here, just a repeating cycle, so there's nothing
+    // to detect or react to, only a position to compute fresh each frame.
+    function runScrollConveyor(movers, axis, dir, speedPxPerSec, extentPx) {
+      const start = performance.now();
+
+      function frame(now) {
+        const elapsed = (now - start) / 1000;
+        const travelled = dir * speedPxPerSec * elapsed;
+        movers.forEach(m => {
+          if (axis === 'row') {
+            const x = (((m.baseX + travelled) % extentPx) + extentPx) % extentPx;
+            gsap.set(m.el, { x });
+          } else {
+            const y = (((m.baseY + travelled) % extentPx) + extentPx) % extentPx;
+            gsap.set(m.el, { y });
+          }
+        });
+        flowRaf = requestAnimationFrame(frame);
       }
 
-      const linesHtml = Array.from({ length: lineCount }, (_, li) => {
-        const items = li === targetLine
-          ? generateItems(perLine, config)
-          : Array.from({ length: perLine }, () => makeDistractor(config));
-        // the duplicate has to be the SAME items, not a second
-        // independently-randomized set — if the glyphs differ, the
-        // instant the loop wraps reads as every character in the strip
-        // suddenly swapping to something else, which is exactly the
-        // "teleport" this was built to avoid. If this line holds the
-        // real target, both copies legitimately show it (clicking
-        // either one is correct) rather than trying to hide a second one.
-        const track = [...items, ...items].map(renderItem).join('');
-        return `<div class="scroll-line"><div class="scroll-line-track">${track}</div></div>`;
-      }).join('');
-
-      board.innerHTML = linesHtml;
-
-      // pure CSS animation, not a JS requestAnimationFrame loop — the
-      // previous version re-wrote every strip's transform from JS every
-      // single frame, which is real, avoidable main-thread work (and
-      // vulnerable to anything ELSE briefly busy on that thread) that a
-      // native CSS animation simply doesn't have, since the browser's
-      // compositor drives it independently. The duplicate-content bug
-      // (different random glyphs in each copy) was the actual cause of
-      // the original "teleport" — not the CSS version's percentage
-      // timing, which was the wrong thing blamed at the time. That's
-      // fixed now (both copies are the literal same items), so the
-      // simpler, cheaper CSS approach should just work. Direction/speed
-      // are still randomized per strip, just set once here as plain
-      // animation-direction/-duration rather than recomputed every frame.
-      [...board.querySelectorAll('.scroll-line-track')].forEach(track => {
-        track.style.animationDirection = Math.random() < 0.5 ? 'normal' : 'reverse';
-        track.style.animationDuration = `${Math.round(scrollSpeedMs * (0.8 + Math.random() * 0.4))}ms`;
-      });
+      flowRaf = requestAnimationFrame(frame);
     }
 
     // re-rolls a dev-forced motion config's pattern (bounce/phase) and

@@ -1600,10 +1600,15 @@ body.page-question-play .play-item {
   height: max-content;
 }
 
+/* box size is its own variable, separate from --item-font-size (the
+   glyph itself, smaller — see renderScrollRound) — perLine of these
+   boxes plus their gaps has to sum to EXACTLY the strip's own viewport
+   width/height for the loop to be gapless, which only holds if the box
+   size is driven by the same number the column/row math itself used. */
 .scroll-line-track .play-item {
   flex: none;
-  width: var(--item-font-size, 32px);
-  height: var(--item-font-size, 32px);
+  width: var(--scroll-cell-size, 32px);
+  height: var(--scroll-cell-size, 32px);
 }
 
 .play-board[data-mode='color'] .play-item.is-odd {

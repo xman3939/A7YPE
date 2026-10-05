@@ -273,6 +273,7 @@ export default {
       // would otherwise inherit its axis attr or leftover gap
       delete board.dataset.scrollAxis;
       board.style.removeProperty('--scroll-gap');
+      board.style.removeProperty('--scroll-cell-size');
     }
 
     // shows the current target character huge and alone, centered in the
@@ -615,8 +616,21 @@ export default {
       board.dataset.layout = 'scroll';
       board.dataset.scrollAxis = scrollAxis;
       board.style.gridTemplateColumns = '';
-      const itemSize = scrollAxis === 'row' ? availableW / columns : availableH / rows;
-      board.style.setProperty('--item-font-size', `${Math.round(itemSize * 0.6)}px`);
+      // the cell box's real rendered size has to come out to EXACTLY the
+      // same math that produced `columns`/`rows` in the first place —
+      // perLine boxes of this size plus (perLine-1) gaps must sum to
+      // exactly the viewport's own width/height, or one copy's real
+      // extent won't exactly match the viewport, leaving a persistent
+      // gap/seam between the two copies at every scroll position. That
+      // mismatch, not the transform math, was the actual "reaches the
+      // end and glitches" symptom — box size and font size are kept as
+      // two separate variables now specifically so the box can stay
+      // exact while the glyph itself still has breathing room inside it.
+      const cellSize = scrollAxis === 'row'
+        ? (availableW - (columns - 1) * GRID_GAP) / columns
+        : (availableH - (rows - 1) * GRID_GAP) / rows;
+      board.style.setProperty('--scroll-cell-size', `${cellSize}px`);
+      board.style.setProperty('--item-font-size', `${Math.round(cellSize * 0.6)}px`);
       board.style.setProperty('--scroll-gap', `${GRID_GAP}px`);
 
       function renderItem(item) {

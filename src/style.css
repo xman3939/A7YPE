@@ -1594,6 +1594,11 @@ body.page-question-play .play-item {
   flex-direction: row;
   gap: var(--scroll-gap, 12px);
   width: max-content;
+  /* promotes each strip to its own compositor layer up front, instead
+     of the browser only doing that the moment the first transform
+     lands — avoids a layer-promotion cost spike on an early frame that
+     can itself read as a stutter right as a round starts */
+  will-change: transform;
 }
 
 .play-board[data-layout='scroll'][data-scroll-axis='column'] .scroll-line-track {

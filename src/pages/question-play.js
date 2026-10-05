@@ -601,34 +601,29 @@ export default {
       const { minCell, scrollAxis, scrollSpeedMs } = config;
       const availableW = board.clientWidth || window.innerWidth;
       const availableH = board.clientHeight || window.innerHeight;
-      const maxFitColumns = Math.max(1, Math.floor((availableW + GRID_GAP) / (minCell + GRID_GAP)));
-      const squareColumns = Math.max(1, Math.ceil(Math.sqrt(config.desiredCount)));
-      const ROW_MIN = Math.min(Math.max(30, window.innerHeight * 0.06), 56);
-      const maxFitRows = Math.max(1, Math.floor((availableH + GRID_GAP) / (ROW_MIN + GRID_GAP)));
-      const minColumnsForHeight = Math.ceil(config.desiredCount / maxFitRows);
-      const columns = Math.min(maxFitColumns, Math.max(squareColumns, minColumnsForHeight));
-      const rows = Math.min(Math.max(1, Math.ceil(config.desiredCount / columns)), maxFitRows);
 
-      const lineCount = scrollAxis === 'row' ? rows : columns;
-      const perLine = scrollAxis === 'row' ? columns : rows;
+      // sequential fit, not the 2D simultaneous one regular grid mode
+      // uses — the two axes here aren't interchangeable the way grid's
+      // columns/rows are. The SCROLL axis has to come first and be
+      // exact (perLine boxes + gaps summing to precisely the viewport
+      // extent is what makes the loop seamless — see runScrollMotion),
+      // so cellSize is derived from it alone. The CROSS axis then has
+      // to use that exact same cellSize to decide how many strips fit —
+      // computing it independently (the old approach) could size a
+      // strip shorter/narrower than cellSize itself, clipping every
+      // item in it, the target included, against .scroll-line's
+      // overflow:hidden.
+      const scrollExtentPx = scrollAxis === 'row' ? availableW : availableH;
+      const crossExtentPx = scrollAxis === 'row' ? availableH : availableW;
+      const perLine = Math.max(2, Math.floor((scrollExtentPx + GRID_GAP) / (minCell + GRID_GAP)));
+      const cellSize = (scrollExtentPx - (perLine - 1) * GRID_GAP) / perLine;
+      const lineCount = Math.max(1, Math.floor((crossExtentPx + GRID_GAP) / (cellSize + GRID_GAP)));
+
       const targetLine = Math.floor(Math.random() * lineCount);
 
       board.dataset.layout = 'scroll';
       board.dataset.scrollAxis = scrollAxis;
       board.style.gridTemplateColumns = '';
-      // the cell box's real rendered size has to come out to EXACTLY the
-      // same math that produced `columns`/`rows` in the first place —
-      // perLine boxes of this size plus (perLine-1) gaps must sum to
-      // exactly the viewport's own width/height, or one copy's real
-      // extent won't exactly match the viewport, leaving a persistent
-      // gap/seam between the two copies at every scroll position. That
-      // mismatch, not the transform math, was the actual "reaches the
-      // end and glitches" symptom — box size and font size are kept as
-      // two separate variables now specifically so the box can stay
-      // exact while the glyph itself still has breathing room inside it.
-      const cellSize = scrollAxis === 'row'
-        ? (availableW - (columns - 1) * GRID_GAP) / columns
-        : (availableH - (rows - 1) * GRID_GAP) / rows;
       board.style.setProperty('--scroll-cell-size', `${cellSize}px`);
       board.style.setProperty('--item-font-size', `${Math.round(cellSize * 0.6)}px`);
       board.style.setProperty('--scroll-gap', `${GRID_GAP}px`);
@@ -694,7 +689,16 @@ export default {
         lines.forEach(line => {
           const progress = (elapsed / line.speedMs) % 1;
           const effective = line.dir < 0 ? progress : 1 - progress;
-          const shift = -effective * line.extent;
+          // rounded to a whole pixel — a continuously-changing SUB-pixel
+          // transform on text is genuinely more expensive than an
+          // integer one, since the browser may need to re-rasterize
+          // glyph antialiasing at the new fractional offset rather than
+          // just compositing the existing layer; with potentially
+          // hundreds of characters moving every frame across several
+          // strips at once, that adds up to real, visible jank. A whole
+          // pixel is imperceptible as a position difference but lets
+          // the compositor just shift the already-rendered layer.
+          const shift = Math.round(-effective * line.extent);
           line.track.style.transform = axis === 'row' ? `translateX(${shift}px)` : `translateY(${shift}px)`;
         });
         flowRaf = requestAnimationFrame(frame);

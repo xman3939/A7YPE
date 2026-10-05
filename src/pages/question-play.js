@@ -41,7 +41,7 @@ const STATS = [
 // jumble/motion modes — generateItems() always reads them for the
 // non-target distractors regardless of mode. Switched off for now — flip
 // back to true to restore it.
-const DEV_PANEL_ENABLED = false;
+const DEV_PANEL_ENABLED = true;
 
 const DEV_ROUNDS = [
   { key: 'grid-color', label: 'Grid: color axis', config: { desiredCount: 9, mode: 'grid', minCell: 60, mixFraction: 0, axis: 'color' } },

@@ -635,12 +635,19 @@ export default {
 
       const scrollExtentPx = scrollAxis === 'row' ? availableW : availableH;
       const crossExtentPx = scrollAxis === 'row' ? availableH : availableW;
-      // perLine boxes + gaps must sum to EXACTLY the viewport extent
-      // along the scroll axis, or the CSS loop (-50% keyframe, see
-      // style.css) isn't seamless — solved for directly rather than
-      // just reusing plain grid's own per-cell size, which only fills
-      // approximately (grid lets 1fr tracks absorb any leftover space).
-      const cellSize = (scrollExtentPx - (perLine - 1) * GRID_GAP) / perLine;
+      // the CSS -50% keyframe splits the TRACK's total width exactly in
+      // half — but the track holds 2*perLine items with a gap between
+      // every adjacent pair, including the one sitting right at the
+      // seam between the two copies, so the real gap count is
+      // (2*perLine - 1), not 2*(perLine - 1). That's an ODD number of
+      // gaps split by an exact half, which leaves a fixed half-gap of
+      // error landing at that one seam position every single cycle —
+      // the consistent "one character stutters on every line" symptom.
+      // Solving with (perLine - 0.5) gaps instead of (perLine - 1)
+      // folds that seam gap's own half-width into the budget up front,
+      // so half the TRUE total width lands exactly on scrollExtentPx
+      // with nothing left over.
+      const cellSize = (scrollExtentPx - (perLine - 0.5) * GRID_GAP) / perLine;
       const targetLine = Math.floor(Math.random() * lineCount);
 
       board.dataset.layout = 'scroll';

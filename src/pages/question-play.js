@@ -618,6 +618,14 @@ export default {
         .map(item => `<button type="button" class="play-item${item.isRed ? ' is-red' : ''}${item.isTarget ? ' is-target' : ''}">${esc(item.char)}</button>`)
         .join('');
 
+      // row axis (horizontal motion): every item in the same ROW shares
+      // a direction, rolled once per row — column axis: same idea per
+      // COLUMN. Not one board-wide direction, so it doesn't read as one
+      // uniform sheet sliding, but still coherent (a whole row/column
+      // moves together) rather than fully random per character.
+      const lineCount = scrollAxis === 'row' ? rows : columns;
+      const dirByLine = Array.from({ length: lineCount }, () => (Math.random() < 0.5 ? 1 : -1));
+
       const els = [...board.querySelectorAll('.play-item')];
       const movers = els.map((el, i) => {
         const col = i % columns;
@@ -625,34 +633,35 @@ export default {
         const baseX = (col + 0.5) * cellW;
         const baseY = (row + 0.5) * cellH;
         gsap.set(el, { xPercent: -50, yPercent: -50, x: baseX, y: baseY });
-        return { el, baseX, baseY };
+        const dir = dirByLine[scrollAxis === 'row' ? row : col];
+        return { el, baseX, baseY, dir };
       });
 
-      const dir = Math.random() < 0.5 ? 1 : -1;
       const extentPx = scrollAxis === 'row' ? availableW : availableH;
       // scrollSpeedMs is "time for one full lap" (same meaning it's had
       // all along, just reused directly here instead of feeding a CSS
       // duration) — converted to a flat px/sec so every character
-      // covers the same distance in the same time regardless of extent
+      // covers the same distance in the same time regardless of extent.
+      // Shared by every mover — only direction varies per line now.
       const speedPxPerSec = extentPx / (scrollSpeedMs / 1000);
 
-      runScrollConveyor(movers, scrollAxis, dir, speedPxPerSec, extentPx);
+      runScrollConveyor(movers, scrollAxis, speedPxPerSec, extentPx);
     }
 
-    // every mover shares the exact same dir/speedPxPerSec/extentPx —
-    // that's the "uniform speed" part. Position wraps via plain modulo
+    // every mover shares the same speedPxPerSec/extentPx but carries its
+    // OWN dir (see dirByLine above). Position wraps via plain modulo
     // (kept positive by adding extentPx before the final %, since JS's
     // % can return negative for a negative dividend) rather than an
     // edge-check-and-snap like chaos-bounce/wrap's bounce mode does —
     // there's no "edge" here, just a repeating cycle, so there's nothing
     // to detect or react to, only a position to compute fresh each frame.
-    function runScrollConveyor(movers, axis, dir, speedPxPerSec, extentPx) {
+    function runScrollConveyor(movers, axis, speedPxPerSec, extentPx) {
       const start = performance.now();
 
       function frame(now) {
         const elapsed = (now - start) / 1000;
-        const travelled = dir * speedPxPerSec * elapsed;
         movers.forEach(m => {
+          const travelled = m.dir * speedPxPerSec * elapsed;
           if (axis === 'row') {
             const x = (((m.baseX + travelled) % extentPx) + extentPx) % extentPx;
             gsap.set(m.el, { x });

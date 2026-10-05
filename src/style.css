@@ -1627,14 +1627,19 @@ body.page-question-play .play-item {
   animation-name: scroll-track-y;
 }
 
+/* --scroll-shift (renderScrollRound) is the exact px distance, set
+   directly from JS — not -50%, which would ask the browser to
+   re-measure the track's own live rendered width and halve it,
+   reintroducing exactly the sub-pixel rounding noise this was built to
+   avoid (see the comment where --scroll-shift is set). */
 @keyframes scroll-track-x {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to { transform: translateX(var(--scroll-shift, -50%)); }
 }
 
 @keyframes scroll-track-y {
   from { transform: translateY(0); }
-  to { transform: translateY(-50%); }
+  to { transform: translateY(var(--scroll-shift, -50%)); }
 }
 
 /* the SCROLL axis (the one items travel along) is the exact computed

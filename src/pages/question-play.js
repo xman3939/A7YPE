@@ -320,6 +320,7 @@ export default {
       delete board.dataset.scrollAxis;
       board.style.removeProperty('--scroll-gap');
       board.style.removeProperty('--scroll-cell-size');
+      board.style.removeProperty('--scroll-shift');
     }
 
     // shows the current target character huge and alone, centered in the
@@ -654,6 +655,15 @@ export default {
       board.dataset.scrollAxis = scrollAxis;
       board.style.gridTemplateColumns = '';
       board.style.setProperty('--scroll-cell-size', `${cellSize}px`);
+      // the exact px distance the loop travels — NOT a CSS -50%, which
+      // asks the browser to re-measure the track's own LIVE rendered
+      // width and halve it. That measurement goes through the flex
+      // layout engine's own device-pixel rounding (individual item/gap
+      // positions can each round by a fraction of a px, accumulating
+      // across perLine items), picking up sub-pixel noise this exact
+      // JS number never had. Driving the keyframe off this same number
+      // directly removes that re-measurement step entirely.
+      board.style.setProperty('--scroll-shift', `${-scrollExtentPx}px`);
       // font sized off the SMALLER of the two axes — the scroll axis's
       // exact cellSize, or this strip's own cross-axis share, whichever
       // is tighter, so the glyph can never be bigger than the room its

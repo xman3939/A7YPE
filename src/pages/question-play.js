@@ -612,16 +612,24 @@ export default {
       const availableW = board.clientWidth || window.innerWidth;
       const availableH = board.clientHeight || window.innerHeight;
 
-      // the EXACT same columns/rows plain grid mode would use for this
-      // same config — scroll mode used to compute its own separate,
-      // density-maximizing fit (as many items as physically fit), which
-      // produced a far denser grid than intended and was most of the
-      // real stutter (sheer DOM/animation workload, not just a timing
-      // bug). perLine is the scroll axis's count (items each strip
-      // scrolls through); lineCount is the cross axis's (how many
+      // the SAME fit plain grid mode uses for this config — scroll mode
+      // used to compute its own separate, density-maximizing fit (as
+      // many items as physically fit), producing a far denser grid than
+      // intended. desiredCount is halved first, specifically for this
+      // mode: every strip's items are rendered TWICE (the duplicate
+      // copy the seamless loop needs), so at the SAME desiredCount,
+      // scroll mode's actual DOM/render workload is already ~2x grid
+      // mode's — halving the target count up front is what makes the
+      // two modes feel comparably dense instead of scroll reading as
+      // twice as busy. perLine is the scroll axis's count (items each
+      // strip scrolls through); lineCount is the cross axis's (how many
       // strips total) — row axis scrolls through columns-many items per
       // strip with rows-many strips; column axis is the transpose.
-      const { columns, rows } = computeGridDims(config, availableW, availableH);
+      const { columns, rows } = computeGridDims(
+        { ...config, desiredCount: Math.max(Math.round(config.desiredCount * 0.5), 4) },
+        availableW,
+        availableH
+      );
       const perLine = scrollAxis === 'row' ? columns : rows;
       const lineCount = scrollAxis === 'row' ? rows : columns;
 

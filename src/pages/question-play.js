@@ -87,6 +87,52 @@ function esc(str) {
     .replace(/>/g, '&gt;');
 }
 
+// shared by plain grid mode AND scroll mode — scroll mode used to run
+// its own separate, density-maximizing fit (as many items as physically
+// fit minCell-wise), which produced a far denser grid than this same
+// config would ever get in plain grid mode, and was most of the real
+// performance/stutter problem (way more concurrent DOM/animation work
+// than intended, not just a math bug). Snaps up to a complete rectangle
+// — never a ragged partial last row — by figuring out how many columns
+// actually fit this screen first, then capping that against a
+// roughly-square target column count derived from desiredCount.
+function computeGridDims(config, availableW, availableH) {
+  const { minCell, desiredCount } = config;
+  const maxFitColumns = Math.max(1, Math.floor((availableW + GRID_GAP) / (minCell + GRID_GAP)));
+  const squareColumns = Math.max(1, Math.ceil(Math.sqrt(desiredCount)));
+  // a square-ish layout assumes there's enough HEIGHT for that many
+  // rows, which isn't true on a short mobile viewport with a dense
+  // round — .play-board has no scroll, so rows that don't fit just get
+  // silently clipped. maxFitRows is how many rows can actually fit; if
+  // a square grid would need more than that, widen it (more columns,
+  // fewer rows) until it doesn't, still never past what the width can
+  // physically fit either.
+  //
+  // ROW_MIN has to match .play-board's real CSS floor — clamp(30px,
+  // 6vh, 56px), not a flat 30. A flat 30 assumes every row can be as
+  // short as 30px, but on a typical tall mobile viewport 6vh alone is
+  // already 40-50px+, well above that assumed floor: the real minimum
+  // row height is bigger than what this math accounted for, so it
+  // consistently overestimated how many rows actually fit and clipped
+  // the last one(s) off-screen — this was the actual bug behind the
+  // target tile sometimes never rendering on mobile.
+  const ROW_MIN = Math.min(Math.max(30, window.innerHeight * 0.06), 56);
+  const maxFitRows = Math.max(1, Math.floor((availableH + GRID_GAP) / (ROW_MIN + GRID_GAP)));
+  const minColumnsForHeight = Math.ceil(desiredCount / maxFitRows);
+  const columns = Math.min(maxFitColumns, Math.max(squareColumns, minColumnsForHeight));
+  // still capped at maxFitRows even after the above — minColumnsForHeight
+  // only solves for enough columns to fit the height IF the width can
+  // actually support that many; when maxFitColumns is the binding
+  // constraint (a narrow board, a dense round), columns gets capped
+  // there instead and desiredCount can still need more rows than fit.
+  // That's how a round's actual target ended up rendered but clipped
+  // below the last visible row, invisible and unreachable — capping
+  // rows here guarantees every row rendered is one this viewport can
+  // actually show.
+  const rows = Math.min(Math.max(1, Math.ceil(desiredCount / columns)), maxFitRows);
+  return { columns, rows };
+}
+
 function statRow(label, value) {
   return `
     <li class="game-row">
@@ -394,45 +440,9 @@ export default {
         return;
       }
 
-      // snap up to a complete rectangle, roughly square rather than one
-      // wide row — never a ragged partial last row either — by figuring
-      // out how many columns actually fit this screen first, then capping
-      // that against a roughly-square target column count.
       const availableW = board.clientWidth || window.innerWidth;
       const availableH = board.clientHeight || window.innerHeight;
-      const maxFitColumns = Math.max(1, Math.floor((availableW + GRID_GAP) / (minCell + GRID_GAP)));
-      const squareColumns = Math.max(1, Math.ceil(Math.sqrt(config.desiredCount)));
-      // a square-ish layout assumes there's enough HEIGHT for that many
-      // rows, which isn't true on a short mobile viewport with a dense
-      // round — .play-board has no scroll, so rows that don't fit just
-      // get silently clipped. maxFitRows is how many rows can actually
-      // fit; if a square grid would need more than that, widen it (more
-      // columns, fewer rows) until it doesn't, still never past what the
-      // width can physically fit either.
-      //
-      // ROW_MIN has to match .play-board's real CSS floor — clamp(30px,
-      // 6vh, 56px), not a flat 30. A flat 30 assumes every row can be as
-      // short as 30px, but on a typical tall mobile viewport 6vh alone is
-      // already 40-50px+, well above that assumed floor: the real minimum
-      // row height is bigger than what this math accounted for, so it
-      // consistently overestimated how many rows actually fit and
-      // clipped the last one(s) off-screen — this was the actual bug
-      // behind the target tile sometimes never rendering on mobile.
-      const ROW_MIN = Math.min(Math.max(30, window.innerHeight * 0.06), 56);
-      const maxFitRows = Math.max(1, Math.floor((availableH + GRID_GAP) / (ROW_MIN + GRID_GAP)));
-      const minColumnsForHeight = Math.ceil(config.desiredCount / maxFitRows);
-      const columns = Math.min(maxFitColumns, Math.max(squareColumns, minColumnsForHeight));
-      // still capped at maxFitRows even after the above — minColumnsForHeight
-      // only solves for enough columns to fit the height IF the width can
-      // actually support that many; when maxFitColumns is the binding
-      // constraint (a narrow board, a dense round), columns gets capped
-      // there instead and desiredCount can still need more rows than fit.
-      // That's how a round's actual target ended up rendered but clipped
-      // below the last visible row, invisible and unreachable — capping
-      // rows here (and shrinking finalCount below the original
-      // desiredCount to match) guarantees every row .play-board renders
-      // is one this viewport can actually show.
-      const rows = Math.min(Math.max(1, Math.ceil(config.desiredCount / columns)), maxFitRows);
+      const { columns, rows } = computeGridDims(config, availableW, availableH);
       const finalCount = columns * rows;
 
       const items = generateItems(finalCount, config);
@@ -598,25 +608,31 @@ export default {
     // render the SAME items array twice, not two independently-rolled
     // sets — see the loop below for why that matters.
     function renderScrollRound(config) {
-      const { minCell, scrollAxis, scrollSpeedMs } = config;
+      const { scrollAxis, scrollSpeedMs } = config;
       const availableW = board.clientWidth || window.innerWidth;
       const availableH = board.clientHeight || window.innerHeight;
 
-      // the two axes are independent, not a 2D simultaneous fit like
-      // grid mode's columns/rows. SCROLL axis: perLine items + gaps
-      // must sum to EXACTLY the viewport extent, or the loop isn't
-      // seamless (see runScrollMotion) — cellSize is solved for that
-      // directly. CROSS axis (how many strips total): a normal
-      // independent fit, same floor pattern grid/jumble already use —
-      // deliberately NOT derived from cellSize (that was crushing the
-      // strip count whenever cellSize came out large).
+      // the EXACT same columns/rows plain grid mode would use for this
+      // same config — scroll mode used to compute its own separate,
+      // density-maximizing fit (as many items as physically fit), which
+      // produced a far denser grid than intended and was most of the
+      // real stutter (sheer DOM/animation workload, not just a timing
+      // bug). perLine is the scroll axis's count (items each strip
+      // scrolls through); lineCount is the cross axis's (how many
+      // strips total) — row axis scrolls through columns-many items per
+      // strip with rows-many strips; column axis is the transpose.
+      const { columns, rows } = computeGridDims(config, availableW, availableH);
+      const perLine = scrollAxis === 'row' ? columns : rows;
+      const lineCount = scrollAxis === 'row' ? rows : columns;
+
       const scrollExtentPx = scrollAxis === 'row' ? availableW : availableH;
       const crossExtentPx = scrollAxis === 'row' ? availableH : availableW;
-      const perLine = Math.max(2, Math.floor((scrollExtentPx + GRID_GAP) / (minCell + GRID_GAP)));
+      // perLine boxes + gaps must sum to EXACTLY the viewport extent
+      // along the scroll axis, or the loop isn't seamless (see
+      // runScrollMotion) — solved for directly rather than just reusing
+      // plain grid's own per-cell size, which only fills its axis
+      // approximately (grid lets 1fr tracks absorb any leftover space).
       const cellSize = (scrollExtentPx - (perLine - 1) * GRID_GAP) / perLine;
-      const CROSS_MIN = Math.min(Math.max(30, window.innerHeight * 0.06), 56);
-      const lineCount = Math.max(1, Math.floor((crossExtentPx + GRID_GAP) / (CROSS_MIN + GRID_GAP)));
-
       const targetLine = Math.floor(Math.random() * lineCount);
 
       board.dataset.layout = 'scroll';
@@ -624,10 +640,10 @@ export default {
       board.style.gridTemplateColumns = '';
       board.style.setProperty('--scroll-cell-size', `${cellSize}px`);
       // font sized off the SMALLER of the two axes — the scroll axis's
-      // exact cellSize, or this strip's own (independently-fit) cross-
-      // axis share, whichever is tighter, so the glyph can never be
-      // bigger than the room its own strip actually has top to bottom
-      // (row axis) or side to side (column axis).
+      // exact cellSize, or this strip's own cross-axis share, whichever
+      // is tighter, so the glyph can never be bigger than the room its
+      // own strip actually has top to bottom (row axis) or side to side
+      // (column axis).
       const crossCellSize = (crossExtentPx - (lineCount - 1) * GRID_GAP) / lineCount;
       board.style.setProperty('--item-font-size', `${Math.round(Math.min(cellSize, crossCellSize) * 0.6)}px`);
       board.style.setProperty('--scroll-gap', `${GRID_GAP}px`);

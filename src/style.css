@@ -1555,6 +1555,70 @@ body.page-question-play .play-item {
   font-size: var(--item-font-size, 56px);
 }
 
+/* "scroll" mode (question-play.js's renderScrollRound) — a real grid,
+   just split into independently-scrolling strips: row axis stacks
+   strips top to bottom, each one scrolling left/right; column axis
+   stacks them left to right, each scrolling up/down (toggled by
+   data-scroll-axis, set alongside data-layout='scroll'). */
+.play-board[data-layout='scroll'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--scroll-gap, 12px);
+  padding: 0;
+}
+
+.play-board[data-layout='scroll'][data-scroll-axis='column'] {
+  flex-direction: row;
+}
+
+.scroll-line {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* every strip's items are rendered twice back to back (see
+   renderScrollRound) — animating exactly one copy's extent (-50%) before
+   looping is the classic infinite-marquee trick: the reset is invisible
+   because the duplicate copy is already sitting where the original just
+   was. scroll-speed/scroll-gap are set per round (faster = harder). */
+.scroll-line-track {
+  display: flex;
+  flex-direction: row;
+  gap: var(--scroll-gap, 12px);
+  width: max-content;
+  animation: scroll-track-x var(--scroll-speed, 6000ms) linear infinite;
+}
+
+.play-board[data-layout='scroll'][data-scroll-axis='column'] .scroll-line-track {
+  flex-direction: column;
+  width: auto;
+  height: max-content;
+  animation-name: scroll-track-y;
+}
+
+.play-board[data-layout='scroll'][data-scroll-reverse='true'] .scroll-line-track {
+  animation-direction: reverse;
+}
+
+@keyframes scroll-track-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes scroll-track-y {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+.scroll-line-track .play-item {
+  flex: none;
+  width: var(--item-font-size, 32px);
+  height: var(--item-font-size, 32px);
+}
+
 .play-board[data-mode='color'] .play-item.is-odd {
   color: var(--orange);
 }

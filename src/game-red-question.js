@@ -157,6 +157,22 @@ function motionExtras() {
   };
 }
 
+// "scroll" — a real grid (unlike motion's free-floating items), but every
+// row (or column) continuously scrolls through itself, wrapping
+// seamlessly rather than bouncing — same "phase" idea chaos-wrap already
+// uses, just applied as a rigid per-line shift instead of per-item.
+// Speed is the difficulty knob: one full loop takes less time the deeper
+// past its round-11 debut the game gets, floored so it never becomes
+// physically impossible to track.
+function scrollExtras(round) {
+  const depth = Math.max(round - 11, 0);
+  return {
+    scrollAxis: Math.random() < 0.5 ? 'row' : 'column',
+    scrollReverse: Math.random() < 0.5,
+    scrollSpeedMs: Math.max(9000 - depth * 300, 2500),
+  };
+}
+
 export function getRoundConfig(round) {
   const axis = Math.random() < 0.5 ? 'color' : 'symbol';
 
@@ -192,13 +208,14 @@ export function getRoundConfig(round) {
     };
   }
 
-  // phase 3 (11-15): grid (ultra hard), jumble (dense), or motion
-  // (huge/medium, few — motion's easiest tiers, since this is its debut)
+  // phase 3 (11-15): grid (ultra hard), jumble (dense), motion (huge/
+  // medium, few — motion's easiest tiers, since this is its debut), or
+  // scroll (also debuting here, same cadence as motion)
   if (round <= 15) {
     const t = (round - 11) / 4;
     const tier = pick(MOTION_TIERS_EASY);
     return {
-      mode: pick(['grid', 'jumble', 'motion']),
+      mode: pick(['grid', 'jumble', 'motion', 'scroll']),
       desiredCount: Math.round(lerp(50, 90, t)),
       minCell: Math.round(lerp(44, 38, t)),
       mixFraction: lerp(0.65, 0.85, t),
@@ -207,16 +224,17 @@ export function getRoundConfig(round) {
       ...motionExtras(),
       motionCount: computeMotionCount(tier, round),
       motionItemSize: tier.size,
+      ...scrollExtras(round),
     };
   }
 
   // phase 4 (16-20): grid (ultra hard, maxed out), jumble (ultra dense),
-  // or motion (any of the 9 size/density combos — fully open now)
+  // motion (any of the 9 size/density combos — fully open now), or scroll
   if (round <= 20) {
     const t = (round - 16) / 4;
     const tier = pick(MOTION_TIERS);
     return {
-      mode: pick(['grid', 'jumble', 'motion']),
+      mode: pick(['grid', 'jumble', 'motion', 'scroll']),
       desiredCount: 90,
       minCell: 36,
       mixFraction: 0.85,
@@ -225,29 +243,44 @@ export function getRoundConfig(round) {
       ...motionExtras(),
       motionCount: computeMotionCount(tier, round),
       motionItemSize: tier.size,
+      ...scrollExtras(round),
     };
   }
 
-  // phase 5 (21+): every mode's hardest form only, randomized — grid
-  // maxed, jumble maxed, motion restricted to each size's "many" density
+  // phase 5 (21+): every mode's hardest form only, randomized — jumble
+  // stays maxed at 400 (already dense enough to cost legibility if pushed
+  // further — see the text-box-trim clipping fix), motion restricted to
+  // each size's "many" density. Grid used to flatline at round 21's own
+  // numbers forever past this point, which read as a ceiling ("ultra
+  // hard" was just this one fixed difficulty) rather than genuinely
+  // escalating — it now keeps climbing with depth same as everything
+  // else, capped so it never outruns what the fitting math in
+  // question-play.js can still lay out.
+  const depth = round - 21;
   const tier = pick(MOTION_TIERS_HARDEST);
   return {
-    mode: pick(['grid', 'jumble', 'motion']),
-    desiredCount: 90,
-    minCell: 34,
-    mixFraction: 0.85,
+    mode: pick(['grid', 'jumble', 'motion', 'scroll']),
+    desiredCount: Math.min(90 + Math.floor(depth * 2.5), 160),
+    minCell: Math.max(34 - Math.min(depth * 0.4, 8), 26),
+    mixFraction: Math.min(0.85 + Math.min(depth * 0.01, 0.1), 0.95),
     axis,
     jumbleCount: 400,
     ...motionExtras(),
     motionCount: computeMotionCount(tier, round),
     motionItemSize: tier.size,
+    ...scrollExtras(round),
   };
 }
 
 // targetChar/targetIsRed come from question-play.js's current target (see
 // pickNewTarget above) — config is expected to carry them on top of
-// whatever getRoundConfig() returned, merged in by the caller
-function makeDistractor({ mixFraction, axis, motionColorMode, targetChar, targetIsRed }) {
+// whatever getRoundConfig() returned, merged in by the caller. Exported
+// for "scroll" mode (question-play.js) — every scroll line needs a
+// duplicate copy of itself for its CSS loop to wrap seamlessly, and that
+// duplicate must never contain a second target, so it's built directly
+// from distractors rather than going through generateItems() (which
+// always forces exactly one target into whatever it returns).
+export function makeDistractor({ mixFraction, axis, motionColorMode, targetChar, targetIsRed }) {
   if (motionColorMode === 'all-white') {
     // color is never the tell for symbol here — every distractor is
     // forced to the WRONG color regardless of the usual mixFraction/axis

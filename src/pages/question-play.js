@@ -2,7 +2,7 @@ import gsap from 'gsap';
 import { renderChrome, initChrome, isDesktop } from './chrome.js';
 import { fragmentElement, runReveal, runUnreveal, WAVE } from '../text-reveal.js';
 import { showResultsScreen } from '../results-screen.js';
-import { START_TIME, ROUND_RESET_EVERY, CORRECT_BONUS, POINTS_PER_ROUND, MISS_PENALTY, WIN_SCORE, getRoundConfig, getBaseTime, generateItems, pickNewTarget } from '../game-red-question.js';
+import { START_TIME, ROUND_RESET_EVERY, CORRECT_BONUS, POINTS_PER_ROUND, MISS_PENALTY, WIN_SCORE, getRoundConfig, getBaseTime, generateItems, pickNewTarget, makeDistractor } from '../game-red-question.js';
 
 const GRID_GAP = 12;
 // motion tiers (game-red-question.js's MOTION_TIERS) are sized/counted
@@ -72,6 +72,10 @@ const DEV_ROUNDS = [
   { key: 'motion-small-few', label: 'Motion: small, few', config: { mode: 'motion', motionCount: 45, motionItemSize: 70, mixFraction: 0.5, axis: 'color' } },
   { key: 'motion-small-medium', label: 'Motion: small, medium', config: { mode: 'motion', motionCount: 70, motionItemSize: 70, mixFraction: 0.6, axis: 'color' } },
   { key: 'motion-small-many', label: 'Motion: small, many', config: { mode: 'motion', motionCount: 150, motionItemSize: 70, mixFraction: 0.7, axis: 'color' } },
+  { key: 'scroll-row-slow', label: 'Scroll: row, slow', config: { mode: 'scroll', desiredCount: 60, minCell: 46, scrollAxis: 'row', scrollReverse: false, scrollSpeedMs: 9000, mixFraction: 0.6, axis: 'color' } },
+  { key: 'scroll-row-fast', label: 'Scroll: row, fast', config: { mode: 'scroll', desiredCount: 90, minCell: 36, scrollAxis: 'row', scrollReverse: true, scrollSpeedMs: 2500, mixFraction: 0.8, axis: 'color' } },
+  { key: 'scroll-column-slow', label: 'Scroll: column, slow', config: { mode: 'scroll', desiredCount: 60, minCell: 46, scrollAxis: 'column', scrollReverse: false, scrollSpeedMs: 9000, mixFraction: 0.6, axis: 'color' } },
+  { key: 'scroll-column-fast', label: 'Scroll: column, fast', config: { mode: 'scroll', desiredCount: 90, minCell: 36, scrollAxis: 'column', scrollReverse: true, scrollSpeedMs: 2500, mixFraction: 0.8, axis: 'color' } },
 ];
 
 function esc(str) {
@@ -262,6 +266,12 @@ export default {
       board.style.removeProperty('margin-left');
       board.style.removeProperty('margin-right');
       board.style.removeProperty('width');
+      // renderScrollRound's own leftovers — board is reused across every
+      // round, so a grid/jumble/motion round right after a scroll one
+      // would otherwise inherit its axis/reverse attrs or leftover gap
+      delete board.dataset.scrollAxis;
+      delete board.dataset.scrollReverse;
+      board.style.removeProperty('--scroll-gap');
     }
 
     // shows the current target character huge and alone, centered in the
@@ -374,6 +384,11 @@ export default {
 
       if (mode === 'motion') {
         renderMotionRound(config);
+        return;
+      }
+
+      if (mode === 'scroll') {
+        renderScrollRound(config);
         return;
       }
 
@@ -550,6 +565,70 @@ export default {
       }
 
       flowRaf = requestAnimationFrame(frame);
+    }
+
+    // "scroll" — a real grid, unlike motion/jumble, but every row (or
+    // column, config.scrollAxis) is its own independently-scrolling
+    // strip: a CSS animation shifts it continuously one way, wrapping
+    // seamlessly rather than bouncing. The classic infinite-marquee
+    // trick makes that wrap invisible — each strip's items are rendered
+    // TWICE back to back, then the animation only ever needs to slide
+    // exactly one copy's width/height (-50%) before looping, so the
+    // instant it resets, the duplicate copy is already sitting in
+    // exactly the position the original just vacated.
+    //
+    // Only one strip actually carries the real target; every other
+    // strip, and BOTH copies in every strip (the real one included — its
+    // own duplicate must never show a second target), are pure
+    // distractors built straight from makeDistractor() rather than
+    // generateItems(), which always forces exactly one target into
+    // whatever count it's given.
+    function renderScrollRound(config) {
+      const { minCell, scrollAxis, scrollReverse, scrollSpeedMs } = config;
+      const availableW = board.clientWidth || window.innerWidth;
+      const availableH = board.clientHeight || window.innerHeight;
+      const maxFitColumns = Math.max(1, Math.floor((availableW + GRID_GAP) / (minCell + GRID_GAP)));
+      const squareColumns = Math.max(1, Math.ceil(Math.sqrt(config.desiredCount)));
+      const ROW_MIN = Math.min(Math.max(30, window.innerHeight * 0.06), 56);
+      const maxFitRows = Math.max(1, Math.floor((availableH + GRID_GAP) / (ROW_MIN + GRID_GAP)));
+      const minColumnsForHeight = Math.ceil(config.desiredCount / maxFitRows);
+      const columns = Math.min(maxFitColumns, Math.max(squareColumns, minColumnsForHeight));
+      const rows = Math.min(Math.max(1, Math.ceil(config.desiredCount / columns)), maxFitRows);
+
+      const lineCount = scrollAxis === 'row' ? rows : columns;
+      const perLine = scrollAxis === 'row' ? columns : rows;
+      const targetLine = Math.floor(Math.random() * lineCount);
+
+      board.dataset.layout = 'scroll';
+      board.dataset.scrollAxis = scrollAxis;
+      if (scrollReverse) {
+        board.dataset.scrollReverse = 'true';
+      } else {
+        delete board.dataset.scrollReverse;
+      }
+      board.style.gridTemplateColumns = '';
+      const itemSize = scrollAxis === 'row' ? availableW / columns : availableH / rows;
+      board.style.setProperty('--item-font-size', `${Math.round(itemSize * 0.6)}px`);
+      board.style.setProperty('--scroll-speed', `${scrollSpeedMs}ms`);
+      board.style.setProperty('--scroll-gap', `${GRID_GAP}px`);
+
+      function renderItem(item) {
+        return `<button type="button" class="play-item${item.isRed ? ' is-red' : ''}${item.isTarget ? ' is-target' : ''}">${esc(item.char)}</button>`;
+      }
+
+      const linesHtml = Array.from({ length: lineCount }, (_, li) => {
+        const primary = li === targetLine
+          ? generateItems(perLine, config)
+          : Array.from({ length: perLine }, () => makeDistractor(config));
+        // the duplicate copy is ALWAYS pure distractors, even on the
+        // target's own line — a second visible target would be
+        // unclickable-but-identical-looking, which just reads as broken
+        const duplicate = Array.from({ length: perLine }, () => makeDistractor(config));
+        const track = [...primary, ...duplicate].map(renderItem).join('');
+        return `<div class="scroll-line"><div class="scroll-line-track">${track}</div></div>`;
+      }).join('');
+
+      board.innerHTML = linesHtml;
     }
 
     // re-rolls a dev-forced motion config's pattern (bounce/phase) and

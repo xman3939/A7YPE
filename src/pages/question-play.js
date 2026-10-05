@@ -210,7 +210,6 @@ export default {
     // so a forced round can be studied without the clock ending it
     let devForcedConfig = null;
     let devUnlimitedTimer = false;
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     // the current {char, isRed} everyone's hunting for — re-rolled by
     // playNewTargetSequence() every ROUND_RESET_EVERY rounds (and at
     // session start/retry), not fixed to "?"/orange anymore
@@ -443,6 +442,14 @@ export default {
       // a bit bigger than the tile itself, so adjacent items genuinely
       // overlap a little rather than just touching edges
       board.style.setProperty('--item-font-size', `${Math.round(cell * 0.95)}px`);
+      const boardHPx = board.clientHeight || window.innerHeight;
+      // .play-board has overflow:hidden — an edge tile's jitter had no
+      // clamp at all, so it could land (or rotate) partially or fully
+      // past the board's actual bounds and just get silently clipped
+      // off. Computing position as real pixels (not the old %+px calc())
+      // makes it clampable; half a cell of margin keeps every tile's
+      // rotated bounding box clear of the edge, not just its center.
+      const margin = cell * 0.5;
       board.innerHTML = items
         .map((item, i) => {
           const col = i % columns;
@@ -450,9 +457,11 @@ export default {
           const jitterX = Math.round((Math.random() - 0.5) * cell * 1.1);
           const jitterY = Math.round((Math.random() - 0.5) * cell * 1.1);
           const rotate = Math.round((Math.random() - 0.5) * 90);
-          const left = ((col + 0.5) / columns) * 100;
-          const top = ((row + 0.5) / tileRows) * 100;
-          const style = `left:calc(${left}% + ${jitterX}px);top:calc(${top}% + ${jitterY}px);transform:translate(-50%,-50%) rotate(${rotate}deg);`;
+          const rawLeft = ((col + 0.5) / columns) * boardW + jitterX;
+          const rawTop = ((row + 0.5) / tileRows) * boardHPx + jitterY;
+          const left = Math.min(Math.max(rawLeft, margin), boardW - margin);
+          const top = Math.min(Math.max(rawTop, margin), boardHPx - margin);
+          const style = `left:${Math.round(left)}px;top:${Math.round(top)}px;transform:translate(-50%,-50%) rotate(${rotate}deg);`;
           return `<button type="button" class="play-item${item.isRed ? ' is-red' : ''}${item.isTarget ? ' is-target' : ''}" style="${style}">${esc(item.char)}</button>`;
         })
         .join('');
@@ -486,14 +495,6 @@ export default {
       const els = [...board.querySelectorAll('.play-item')];
       const boardW = board.clientWidth;
       const boardH = board.clientHeight;
-
-      if (prefersReducedMotion) {
-        els.forEach((el, i) => {
-          const x = ((i + 0.5) / els.length) * boardW;
-          gsap.set(el, { xPercent: -50, yPercent: -50, x, y: boardH / 2 });
-        });
-        return;
-      }
 
       runConstantMotion(els, boardW, boardH, config.motionPattern);
     }

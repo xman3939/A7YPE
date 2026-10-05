@@ -197,7 +197,6 @@ export default {
     // so a forced round can be studied without the clock ending it
     let devForcedConfig = null;
     let devUnlimitedTimer = false;
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     function updateTimerDisplay() {
       if (!timer) return;
@@ -324,7 +323,7 @@ export default {
         })
         .join('');
 
-      if (mode === 'motion' && !prefersReducedMotion) {
+      if (mode === 'motion') {
         runMotion(motionVariant, columns, rows);
       }
     }
@@ -347,9 +346,7 @@ export default {
         })
         .join('');
 
-      if (!prefersReducedMotion) {
-        runChaosMotion();
-      }
+      runChaosMotion();
     }
 
     function runChaosMotion() {
@@ -422,9 +419,7 @@ export default {
         })
         .join('');
 
-      if (!prefersReducedMotion) {
-        runConstantMotion(motionVariant, oddSpeedMode);
-      }
+      runConstantMotion(motionVariant, oddSpeedMode);
     }
 
     function runConstantMotion(motionVariant, oddSpeedMode) {

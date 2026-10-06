@@ -37,10 +37,10 @@ const PROCESS_ITEMS = [
 const SWATCHES = [
   { name: 'Acid Yellow', hex: '#FAFF62', pantone: 'Yellow 012 C', logo: 'b' },
   { name: 'Ink', hex: '#272727', pantone: 'Black 6 C', logo: 'w' },
-  { name: 'Deepslate', hex: '#5B5B5B', pantone: 'Cool Gray 11 C', logo: 'w' },
-  { name: 'Stone', hex: '#8F8F8F', pantone: 'Cool Gray 8 C', logo: 'b' },
-  { name: 'Diorite', hex: '#CACACA', pantone: 'Cool Gray 3 C', logo: 'b' },
-  { name: 'Quartz', hex: '#F8F8F8', pantone: 'White', logo: 'b' },
+  { name: 'Charcoal', hex: '#5B5B5B', pantone: 'Cool Gray 11 C', logo: 'w' },
+  { name: 'Slate', hex: '#8F8F8F', pantone: 'Cool Gray 8 C', logo: 'b' },
+  { name: 'Gray', hex: '#CACACA', pantone: 'Cool Gray 3 C', logo: 'b' },
+  { name: 'White', hex: '#F8F8F8', pantone: 'White', logo: 'b' },
 ];
 
 function hexToRgb(hex) {

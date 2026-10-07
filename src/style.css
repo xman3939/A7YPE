@@ -2053,6 +2053,14 @@ body.page-info .page {
      view on load with no user action. Nothing else on the site scrolls
      internally like this page does, so nothing else needs this. */
   overflow-anchor: none;
+  /* still scrolls (wheel, trackpad, touch, keyboard) — just no visible
+     scrollbar on any platform */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body.page-info .page::-webkit-scrollbar {
+  display: none;
 }
 
 /* sticky nav — only makes sense (and only takes effect) here, since this

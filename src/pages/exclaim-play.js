@@ -2,6 +2,7 @@ import gsap from 'gsap';
 import { renderChrome, initChrome } from './chrome.js';
 import { fragmentElement, runReveal, WAVE } from '../text-reveal.js';
 import { showResultsScreen } from '../results-screen.js';
+import { playSound } from '../audio.js';
 import { START_TIME, CORRECT_BONUS, POINTS_PER_ITEM, MISS_PENALTY, WIN_SCORE, getRoundConfig, generateItems, generateChaosItems, COLOR_MODES, CHAOS_SPEED_MODES } from '../game-odd-one-out.js';
 
 const GRID_GAP = 12;
@@ -534,6 +535,7 @@ export default {
     }
 
     function handleCorrect() {
+      playSound('correctAnswer');
       if (devForcedConfig) {
         // stay on the same forced round type instead of progressing —
         // this is for studying one round flavor, not playing normally
@@ -555,6 +557,7 @@ export default {
     }
 
     function handleMiss(btn) {
+      playSound('incorrectAnswer');
       misses += 1;
       btn.classList.remove('is-shaking');
       void btn.offsetWidth;

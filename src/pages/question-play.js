@@ -2,6 +2,7 @@ import gsap from 'gsap';
 import { renderChrome, initChrome, isDesktop } from './chrome.js';
 import { fragmentElement, runReveal, runUnreveal, WAVE } from '../text-reveal.js';
 import { showResultsScreen } from '../results-screen.js';
+import { playSound } from '../audio.js';
 import { START_TIME, ROUND_RESET_EVERY, CORRECT_BONUS, POINTS_PER_ROUND, MISS_PENALTY, WIN_SCORE, getRoundConfig, getBaseTime, generateItems, pickNewTarget } from '../game-red-question.js';
 
 const GRID_GAP = 12;
@@ -689,6 +690,7 @@ export default {
     }
 
     function handleCorrect() {
+      playSound('correctAnswer');
       if (devForcedConfig) {
         // stay on the same forced round type instead of progressing —
         // this is for studying one round flavor, not playing normally
@@ -732,6 +734,7 @@ export default {
     }
 
     function handleMiss(btn) {
+      playSound('incorrectAnswer');
       misses += 1;
       btn.classList.remove('is-shaking');
       void btn.offsetWidth;

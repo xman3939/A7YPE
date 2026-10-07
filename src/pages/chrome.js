@@ -1,4 +1,5 @@
 import { fragmentElement, runReveal, WAVE, WAVE_SHORT } from '../text-reveal.js';
+import { playSound } from '../audio.js';
 
 const menuItems = [
   { label: 'A7', path: '/' },
@@ -11,17 +12,14 @@ const menuItems = [
 const MENU_ITEM_START = 200;
 const MENU_ITEM_GAP = 120;
 
-// Sound Effects/Music have no real system behind them at all yet — no
-// audio exists to enable/disable, so unlike Fullscreen/Cursor (real,
-// working toggles) these are locked to Disabled and non-clickable for
-// now, with the hover line explaining why rather than just repeating
-// "Disabled" back. Once an actual sound system exists, this goes back
-// to a real toggle — not deleting the localStorage plumbing below since
-// it'll be exactly what that flip needs.
+// Sound Effects is a real toggle now (src/audio.js reads this directly)
+// — defaults to Disabled for new visitors rather than opting everyone
+// into audio they didn't ask for. Music still has no actual track to
+// play, so it stays locked/non-clickable below, same as before.
 const SOUND_KEY = 'site-sound-effects-enabled';
 const MUSIC_KEY = 'site-music-enabled';
 
-function getSoundEnabled() {
+export function getSoundEnabled() {
   const stored = localStorage.getItem(SOUND_KEY);
   return stored === null ? false : stored === 'true';
 }
@@ -112,7 +110,7 @@ export function renderChrome(innerHTML, footerHTML) {
       ${footerHTML ?? `
         <footer class="infobar">
           <div class="options-row">
-            <button type="button" class="option option--toggle is-locked" data-option="sound" aria-disabled="true" title="Currently unavailable"><span class="option-label">${roll('Sound Effects:')}</span><span class="option-value">${roll('Disabled')}</span></button>
+            <button type="button" class="option option--toggle" data-option="sound"><span class="option-label">${roll('Sound Effects:')}</span><span class="option-value">${roll(getSoundEnabled() ? 'Enabled' : 'Disabled')}</span></button>
             <button type="button" class="option option--toggle is-locked" data-option="music" aria-disabled="true" title="Currently unavailable"><span class="option-label">${roll('Music:')}</span><span class="option-value">${roll('Disabled')}</span></button>
             <button type="button" class="option option--toggle" data-option="fullscreen"><span class="option-label">${roll('Fullscreen:')}</span><span class="option-value">${roll(isFullscreenActive() ? 'Enabled' : 'Disabled')}</span></button>
             <button type="button" class="option option--toggle" data-option="cursor"><span class="option-label">${roll('Cursor:')}</span><span class="option-value">${roll(getCursorStyle() === 'arrow' ? 'Arrow' : 'Crosshair')}</span></button>
@@ -196,10 +194,20 @@ export function initChrome({ instant = false } = {}) {
     });
   }
 
-  // Sound Effects/Music are locked to Disabled right now (no real audio
-  // system to toggle yet) — deliberately no click listener at all, so
-  // they're inert; the hover still works (see roll()'s hoverText above),
-  // just doesn't lead anywhere.
+  // Music is still locked to Disabled (no actual track to play yet) —
+  // deliberately no click listener, so it's inert; the hover still
+  // works (see roll()'s hoverText above), just doesn't lead anywhere.
+
+  const soundOption = document.querySelector('[data-option="sound"]');
+  soundOption?.addEventListener('click', () => {
+    setSoundEnabled(!getSoundEnabled());
+    setOptionValueText(soundOption, getSoundEnabled() ? 'Enabled' : 'Disabled');
+    // playSound() itself checks getSoundEnabled() — turning sound OFF
+    // naturally plays nothing (the check fails immediately after this
+    // toggle), turning it ON plays the confirmation chime. Same call
+    // either way, no branching needed.
+    playSound('soundOn');
+  });
 
   const fullscreenOption = document.querySelector('[data-option="fullscreen"]');
   function updateFullscreenValue() {
@@ -215,6 +223,7 @@ export function initChrome({ instant = false } = {}) {
     } else {
       document.documentElement.requestFullscreen?.().catch(() => {});
     }
+    playSound('adjustSetting');
   });
   if (fullscreenChangeHandler) document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
   fullscreenChangeHandler = updateFullscreenValue;
@@ -229,6 +238,7 @@ export function initChrome({ instant = false } = {}) {
   cursorOption?.addEventListener('click', () => {
     setCursorStyle(getCursorStyle() === 'arrow' ? 'crosshair' : 'arrow');
     setOptionValueText(cursorOption, getCursorStyle() === 'arrow' ? 'Arrow' : 'Crosshair');
+    playSound('adjustSetting');
   });
 
   links.forEach(link => fragmentElement(link.querySelector('.roll-line')));

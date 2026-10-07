@@ -37,7 +37,7 @@ const SOUND_URLS = {
 
 // master volume for every effect — the raw files are mixed loud, and
 // these sit under constant hovering/clicking, so they're kept well back
-const MASTER_VOLUME = 0.3;
+const MASTER_VOLUME = 0.1;
 
 let ctx = null;
 let masterGain = null;

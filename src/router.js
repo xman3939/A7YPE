@@ -13,6 +13,23 @@ const routes = [
 
 let currentPage = null;
 let currentPath = null;
+let renderToken = 0;
+
+// a tab left open across a deploy still references the OLD build's hashed
+// page chunks, which no longer exist — vercel.json's catch-all rewrite
+// answers those with index.html, so the dynamic import rejects AFTER the
+// old page has already exited, leaving a blank screen. A full reload of
+// the (already-updated) URL picks up the new build instead. Guarded so a
+// genuinely broken chunk can't put the tab in a reload loop.
+const RELOAD_KEY = 'router-chunk-reload-at';
+function recoverFromStaleBuild() {
+  let last = 0;
+  try { last = Number(sessionStorage.getItem(RELOAD_KEY)) || 0; } catch {}
+  if (Date.now() - last < 10000) return false;
+  try { sessionStorage.setItem(RELOAD_KEY, String(Date.now())); } catch {}
+  location.reload();
+  return true;
+}
 
 // only the footer rule — the nav's own rule (topbar-rule) stays put, same
 // idea as /info's own nav rule never getting an entrance/exit animation:
@@ -38,6 +55,11 @@ function undrawAllRules() {
 export async function render(pathname) {
   const route = routes.find(r => r.path === pathname);
   if (!route) return;
+  const token = ++renderToken;
+
+  // start fetching the page module now, in parallel with the exit
+  // animation, rather than only once it's finished
+  const pageModule = route.page().then(m => m.default, () => null);
 
   updateNavActive(pathname);
 
@@ -46,8 +68,15 @@ export async function render(pathname) {
   }
 
   await currentPage?.exit?.();
+  // a newer navigation started while this one was exiting — let it win
+  if (token !== renderToken) return;
 
-  const { default: page } = await route.page();
+  const page = await pageModule;
+  if (token !== renderToken) return;
+  if (!page) {
+    if (recoverFromStaleBuild()) return;
+    throw new Error(`failed to load page for ${pathname}`);
+  }
   const app = document.getElementById('app');
 
   document.body.className = page.bodyClass ?? '';

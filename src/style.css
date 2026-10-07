@@ -765,11 +765,21 @@ body.page-game .options-row {
   min-width: 90px;
 }
 
-/* only the value (Enabled/Disabled) rolls on hover — the label (Audio:/
-   Fullscreen:) never changes and isn't itself the clickable "setting",
-   so it stays put rather than rolling along with it */
+/* only the value (Enabled/Disabled) rolls on hover — the label (Sound
+   Effects:/Fullscreen:/etc.) never changes and isn't itself the
+   clickable "setting", so it stays put rather than rolling along with
+   it. That's not automatic just from scoping this rule to
+   .option-value: the generic .roll:hover rule below still fires on its
+   own the instant the cursor is directly over the LABEL's own .roll
+   span (a nested, independent hover target), so the label needs its
+   own explicit override, not just the absence of a rule that would
+   roll it. */
 .option--toggle:hover .option-value .roll-inner {
   transform: translateY(-0.95em);
+}
+
+.option-label .roll:hover .roll-inner {
+  transform: none;
 }
 
 @supports not (text-box-trim: trim-both) {

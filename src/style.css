@@ -2636,3 +2636,12 @@ a.info-footer-item-text:hover {
     height: auto;
   }
 }
+
+/* in-game screens — nothing is selectable, so fast repeated clicks/taps
+   on the board (or a drag across it) never start highlighting text, and
+   a long-press on mobile never pops the copy/lookup callout */
+body[class*='-play'] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

@@ -11,6 +11,7 @@ import adjustSettingUrl from './assets/sounds/adjust-setting.mp3?url';
 import correctAnswerUrl from './assets/sounds/correct-answer.mp3?url';
 import hoverClickableUrl from './assets/sounds/hover-clickable.mp3?url';
 import incorrectAnswerUrl from './assets/sounds/incorrect-answer.mp3?url';
+import settingOffUrl from './assets/sounds/setting-off.mp3?url';
 import soundOnUrl from './assets/sounds/sound-on.mp3?url';
 
 // reads the sound-enabled preference straight from localStorage rather
@@ -30,10 +31,16 @@ const SOUND_URLS = {
   correctAnswer: correctAnswerUrl,
   hoverClickable: hoverClickableUrl,
   incorrectAnswer: incorrectAnswerUrl,
+  settingOff: settingOffUrl,
   soundOn: soundOnUrl,
 };
 
+// master volume for every effect — the raw files are mixed loud, and
+// these sit under constant hovering/clicking, so they're kept well back
+const MASTER_VOLUME = 0.3;
+
 let ctx = null;
+let masterGain = null;
 const buffers = {};
 let loadPromise = null;
 
@@ -42,7 +49,12 @@ let loadPromise = null;
 // lazily on the first one (see primeAudio) rather than at module load,
 // which would otherwise start "suspended" and silently do nothing
 function getContext() {
-  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ctx.createGain();
+    masterGain.gain.value = MASTER_VOLUME;
+    masterGain.connect(ctx.destination);
+  }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
 }
@@ -69,13 +81,16 @@ export function primeAudio() {
   return loadPromise;
 }
 
-export function playSound(name) {
-  if (!getSoundEnabled()) return;
+// { force: true } plays even with sound effects disabled — only for the
+// Sound Effects toggle's own "switched off" confirmation, which by
+// definition happens right after sound was turned off
+export function playSound(name, { force = false } = {}) {
+  if (!force && !getSoundEnabled()) return;
   const buffer = buffers[name];
   if (!buffer) return; // not decoded yet — skip rather than queue/delay
   const context = getContext();
   const source = context.createBufferSource();
   source.buffer = buffer;
-  source.connect(context.destination);
+  source.connect(masterGain);
   source.start(0);
 }

@@ -275,6 +275,11 @@ export default {
     // playNewTargetSequence() every ROUND_RESET_EVERY rounds (and at
     // session start/retry), not fixed to "?"/orange anymore
     let currentTarget = null;
+    // invisible extra hit area around the target, in px past its visible
+    // box — only the moving rounds set this (see renderMotionRound/
+    // renderScrollRound); static grid/jumble rounds keep exact hitboxes
+    // so a neighboring tile never counts as the target
+    let hitSlop = { x: 0, y: 0 };
 
     function updateTimerDisplay() {
       if (!timer) return;
@@ -410,6 +415,7 @@ export default {
 
     function renderRound() {
       stopMotion();
+      hitSlop = { x: 0, y: 0 };
 
       // defensive fallback — normally always set by playNewTargetSequence
       // before renderRound() is ever called, but the dev panel can call
@@ -525,6 +531,13 @@ export default {
       const els = [...board.querySelectorAll('.play-item')];
       const boardW = board.clientWidth;
       const boardH = board.clientHeight;
+
+      // items fly in every direction at up to ~130px/s (runConstantMotion),
+      // so the slop is the same on both axes — a fraction of the glyph
+      // size plus roughly how far the fastest item drifts during a
+      // player's reaction lag
+      const slop = Math.round(16 + getMotionItemSize(config.motionItemSize) * 0.2 + 130 * 0.12);
+      hitSlop = { x: slop, y: slop };
 
       runConstantMotion(els, boardW, boardH, config.motionPattern);
     }
@@ -646,6 +659,14 @@ export default {
       // Shared by every mover — only direction varies per line now.
       const speedPxPerSec = extentPx / (scrollSpeedMs / 1000);
 
+      // fast rows/columns move the target a long way between seeing it
+      // and the press landing — generous along the direction of travel
+      // (scaled by speed), tight across it so the neighboring row/column
+      // never counts as a hit
+      const across = Math.round(Math.max(10, Math.min(cellW, cellH) * 0.25));
+      const along = across + Math.round(speedPxPerSec * 0.15);
+      hitSlop = scrollAxis === 'row' ? { x: along, y: across } : { x: across, y: along };
+
       runScrollConveyor(movers, scrollAxis, speedPxPerSec, extentPx);
     }
 
@@ -751,17 +772,46 @@ export default {
       updateTimerDisplay();
     }
 
-    function onBoardClick(e) {
+    function isWithinTargetSlop(targetEl, x, y) {
+      const r = targetEl.getBoundingClientRect();
+      const dx = Math.max(r.left - x, 0, x - r.right);
+      const dy = Math.max(r.top - y, 0, y - r.bottom);
+      return dx <= hitSlop.x && dy <= hitSlop.y;
+    }
+
+    function resolveBoardHit(btn, x, y) {
       if (gameOver) return;
-      const btn = e.target.closest('.play-item');
-      if (!btn) return;
-      if (btn.classList.contains('is-target')) {
+      const targetEl = board.querySelector('.play-item.is-target');
+      if (targetEl && (btn === targetEl || isWithinTargetSlop(targetEl, x, y))) {
         handleCorrect();
-      } else {
+      } else if (btn) {
         handleMiss(btn);
       }
     }
-    board.addEventListener('click', onBoardClick);
+
+    // resolved on press, not 'click' — a click only fires if press AND
+    // release land on the same element, and in the motion/scroll rounds
+    // the character has usually moved out from under the pointer by the
+    // time the button comes back up, so most hits silently never counted
+    function onBoardPointerDown(e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      resolveBoardHit(e.target.closest('.play-item'), e.clientX, e.clientY);
+    }
+
+    // keyboard activation (Enter/Space on a focused tile) still arrives as
+    // a click with detail 0 — real pointer clicks are already handled above
+    function onBoardClick(e) {
+      if (e.detail !== 0) return;
+      const btn = e.target.closest('.play-item');
+      if (btn) resolveBoardHit(btn, -Infinity, -Infinity);
+    }
+
+    function bindBoard() {
+      board.addEventListener('pointerdown', onBoardPointerDown);
+      board.addEventListener('click', onBoardClick);
+    }
+    bindBoard();
 
     function startTimer() {
       clearInterval(timerHandle);
@@ -851,7 +901,7 @@ export default {
       rows.forEach(r => r.querySelector('.row-rule')?.classList.add('is-instant', 'is-drawn'));
       playEl.querySelectorAll('.reveal-chunk').forEach(c => c.classList.add('is-visible'));
 
-      board.addEventListener('click', onBoardClick);
+      bindBoard();
     }
 
     function retry() {

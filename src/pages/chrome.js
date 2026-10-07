@@ -202,11 +202,10 @@ export function initChrome({ instant = false } = {}) {
   soundOption?.addEventListener('click', () => {
     setSoundEnabled(!getSoundEnabled());
     setOptionValueText(soundOption, getSoundEnabled() ? 'Enabled' : 'Disabled');
-    // playSound() itself checks getSoundEnabled() — turning sound OFF
-    // naturally plays nothing (the check fails immediately after this
-    // toggle), turning it ON plays the confirmation chime. Same call
-    // either way, no branching needed.
-    playSound('soundOn');
+    // turning ON plays the confirmation chime; turning OFF plays the
+    // switched-off sound one last time (forced, since sound is now off)
+    if (getSoundEnabled()) playSound('soundOn');
+    else playSound('settingOff', { force: true });
   });
 
   const fullscreenOption = document.querySelector('[data-option="fullscreen"]');
@@ -220,10 +219,11 @@ export function initChrome({ instant = false } = {}) {
     // the real source of truth, not an optimistic update here
     if (isFullscreenActive()) {
       document.exitFullscreen?.().catch(() => {});
+      playSound('settingOff');
     } else {
       document.documentElement.requestFullscreen?.().catch(() => {});
+      playSound('adjustSetting');
     }
-    playSound('adjustSetting');
   });
   if (fullscreenChangeHandler) document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
   fullscreenChangeHandler = updateFullscreenValue;

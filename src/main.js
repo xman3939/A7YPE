@@ -20,7 +20,15 @@ window.addEventListener('pointerdown', primeAudio, { once: true });
 const HOVER_SOUND_SELECTOR = 'button:not(.is-locked):not(:disabled), a[href], [data-route], .play-item';
 let lastHoverTarget = null;
 
+// in-game screens (every /<game>/play page) get no hover sounds at all —
+// game pieces are buttons too, so sweeping across a board was a constant
+// stream of blips competing with the actual correct/incorrect feedback
+function isInGame() {
+  return /(^|\s)page-[a-z-]+-play(\s|$)/.test(document.body.className);
+}
+
 document.addEventListener('pointerover', e => {
+  if (isInGame()) return;
   const target = e.target.closest(HOVER_SOUND_SELECTOR);
   if (!target || target === lastHoverTarget) return;
   lastHoverTarget = target;

@@ -27,9 +27,9 @@ const SWIPE_THRESHOLD = 24;
 const SQUARE_APPEAR_GAP = 130;
 const SQUARE_APPEAR_MS = 220;
 const LIGHT_PAUSE_MS = 300;
-const LIGHT_GAP = 550;
+const LIGHT_GAP = 1000; // one count per second, matching countdown.mp3
 const LIGHT_MS = 150;
-const LIT_HOLD_MS = 400;
+const LIT_HOLD_MS = 850; // GO stays lit a full second (LIGHT_MS + this)
 const SQUARE_HIDE_MS = 300;
 
 const KEY_DIRECTIONS = {

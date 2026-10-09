@@ -338,6 +338,7 @@ export default {
 
       gsap.set(el, { scale: 0.4, opacity: 0 });
       gsap.to(el, { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out(1.6)' });
+      playSound('wanted');
 
       setTimeout(() => {
         gsap.to(el, {
@@ -1002,6 +1003,7 @@ function runCountdownSquares(onDone) {
   const appearDone = (squares.length - 1) * SQUARE_APPEAR_GAP + SQUARE_APPEAR_MS;
 
   setTimeout(() => {
+    playSound('countdown');
     squares.forEach((sq, i) => {
       setTimeout(() => {
         sq.classList.add('is-lit');

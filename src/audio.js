@@ -8,11 +8,13 @@
 // AudioBufferSourceNode per trigger — those can overlap freely and are
 // cleaned up by the browser on their own once they finish.
 import adjustSettingUrl from './assets/sounds/adjust-setting.mp3?url';
+import countdownUrl from './assets/sounds/countdown.mp3?url';
 import correctAnswerUrl from './assets/sounds/correct-answer.mp3?url';
 import hoverClickableUrl from './assets/sounds/hover-clickable.mp3?url';
 import incorrectAnswerUrl from './assets/sounds/incorrect-answer.mp3?url';
 import settingOffUrl from './assets/sounds/setting-off.mp3?url';
 import soundOnUrl from './assets/sounds/sound-on.mp3?url';
+import wantedUrl from './assets/sounds/wanted.mp3?url';
 
 // reads the sound-enabled preference straight from localStorage rather
 // than importing getSoundEnabled from chrome.js — chrome.js needs to
@@ -29,11 +31,19 @@ function getSoundEnabled() {
 const SOUND_URLS = {
   adjustSetting: adjustSettingUrl,
   correctAnswer: correctAnswerUrl,
+  countdown: countdownUrl,
   hoverClickable: hoverClickableUrl,
   incorrectAnswer: incorrectAnswerUrl,
   settingOff: settingOffUrl,
   soundOn: soundOnUrl,
+  wanted: wantedUrl,
 };
+
+// sounds that only ever play one at a time — a new trigger cuts off the
+// previous instance instead of layering on top (sweeping across several
+// buttons, or a retry restarting the countdown mid-play)
+const EXCLUSIVE = new Set(['hoverClickable', 'countdown', 'wanted']);
+const playing = {};
 
 // master volume for every effect — the raw files are mixed loud, and
 // these sit under constant hovering/clicking, so they're kept well back
@@ -92,5 +102,10 @@ export function playSound(name, { force = false } = {}) {
   const source = context.createBufferSource();
   source.buffer = buffer;
   source.connect(masterGain);
+  if (EXCLUSIVE.has(name)) {
+    try { playing[name]?.stop(); } catch {}
+    playing[name] = source;
+    source.onended = () => { if (playing[name] === source) delete playing[name]; };
+  }
   source.start(0);
 }

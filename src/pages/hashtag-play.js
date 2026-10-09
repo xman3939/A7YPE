@@ -1,4 +1,5 @@
 import { renderChrome, initChrome } from './chrome.js';
+import { playSound } from '../audio.js';
 import { fragmentElement, runReveal, WAVE } from '../text-reveal.js';
 import { showResultsScreen } from '../results-screen.js';
 import { GRID_SIZE, MAX_APPLES, DIRECTIONS, isOpposite, cellKey, createInitialSnake, getTickMs, spawnApple, scoreForApples } from '../game-hashtag.js';
@@ -449,6 +450,7 @@ export default {
       const appearDone = (squares.length - 1) * SQUARE_APPEAR_GAP + SQUARE_APPEAR_MS;
 
       setTimeout(() => {
+        playSound('countdown');
         squares.forEach((sq, i) => {
           setTimeout(() => {
             sq.classList.add('is-lit');

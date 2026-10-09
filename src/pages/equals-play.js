@@ -1,4 +1,5 @@
 import { renderChrome, initChrome } from './chrome.js';
+import { playSound } from '../audio.js';
 import { fragmentElement, runReveal, WAVE } from '../text-reveal.js';
 import { showResultsScreen } from '../results-screen.js';
 import { LIGHT_COUNT_TIER1, LIGHT_COUNT_TIER2, LIGHT_COUNT_TIER3, TIER1_ROUNDS, TIER2_ROUNDS, TIER2_START_SCORE, TIER3_START_SCORE, WIN_SCORE, getLightCount, getTapWindowMs, getPlaybackStepMs, randomLight } from '../game-equals.js';
@@ -468,6 +469,7 @@ export default {
       const appearDone = (squares.length - 1) * SQUARE_APPEAR_GAP + SQUARE_APPEAR_MS;
 
       setTimeout(() => {
+        playSound('countdown');
         squares.forEach((sq, i) => {
           setTimeout(() => {
             sq.classList.add('is-lit');

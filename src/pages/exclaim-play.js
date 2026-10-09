@@ -777,6 +777,7 @@ function runCountdownSquares(onDone) {
   const appearDone = (squares.length - 1) * SQUARE_APPEAR_GAP + SQUARE_APPEAR_MS;
 
   setTimeout(() => {
+    playSound('countdown');
     squares.forEach((sq, i) => {
       setTimeout(() => {
         sq.classList.add('is-lit');

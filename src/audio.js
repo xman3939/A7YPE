@@ -53,6 +53,12 @@ const playing = {};
 // these sit under constant hovering/clicking, so they're kept well back
 const MASTER_VOLUME = 0.1;
 
+// per-sound trims on top of MASTER_VOLUME (1 = unchanged) — the hover
+// plays constantly, so it sits well under everything else
+const SOUND_VOLUME = {
+  hoverClickable: 0.3,
+};
+
 let ctx = null;
 let masterGain = null;
 const buffers = {};
@@ -106,7 +112,15 @@ export function playSound(name, { force = false } = {}) {
   const context = getContext();
   const source = context.createBufferSource();
   source.buffer = buffer;
-  source.connect(masterGain);
+  const volume = SOUND_VOLUME[name] ?? 1;
+  if (volume === 1) {
+    source.connect(masterGain);
+  } else {
+    const gain = context.createGain();
+    gain.gain.value = volume;
+    source.connect(gain);
+    gain.connect(masterGain);
+  }
   if (EXCLUSIVE.has(name)) {
     try { playing[name]?.stop(); } catch {}
     playing[name] = source;

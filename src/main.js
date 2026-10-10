@@ -24,23 +24,22 @@ window.addEventListener('DOMContentLoaded', () => {
 const HOVER_SOUND_SELECTOR = 'button:not(.is-locked):not(:disabled), a[href], [data-route], .play-item';
 let lastHoverTarget = null;
 
-// in-game screens (every /<game>/play page) get no hover sounds at all —
-// game pieces are buttons too, so sweeping across a board was a constant
-// stream of blips competing with the actual correct/incorrect feedback.
-// The game-over screen (results-screen.js) lives on that same play page
-// but isn't gameplay, so hover sounds come back once it's showing.
-function isInGame() {
-  return /(^|\s)page-[a-z-]+-play(\s|$)/.test(document.body.className)
-    && !document.querySelector('.results');
+// the game area itself (.play — board, pieces, lights, cells) gets no
+// hover sounds: game pieces are buttons too, so sweeping across a board
+// was a constant stream of blips competing with the actual correct/
+// incorrect feedback. Everything around it (nav, menu, A7 logo, footer)
+// still does, and so does the game-over screen (results-screen.js),
+// which renders inside .play but isn't gameplay.
+function isGameArea(el) {
+  return !!el.closest('.play') && !el.closest('.results');
 }
 
 document.addEventListener('pointerover', e => {
   // touch has no real hover — a tap fires pointerover too, which would
   // play the hover blip on every tap
   if (e.pointerType !== 'mouse') return;
-  if (isInGame()) return;
   const target = e.target.closest(HOVER_SOUND_SELECTOR);
-  if (!target || target === lastHoverTarget) return;
+  if (!target || target === lastHoverTarget || isGameArea(target)) return;
   lastHoverTarget = target;
   playSound('hoverClickable');
 });

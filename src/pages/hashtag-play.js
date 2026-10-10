@@ -274,6 +274,7 @@ export default {
       const newC = head.c + dc;
 
       if (newR < 0 || newR >= GRID_SIZE || newC < 0 || newC >= GRID_SIZE) {
+        playSound('incorrectAnswer');
         endGame();
         return;
       }
@@ -284,6 +285,7 @@ export default {
       const tailKey = cellKey(tail.r, tail.c);
 
       if (snakeSet.has(newKey) && (growing || newKey !== tailKey)) {
+        playSound('incorrectAnswer');
         endGame();
         return;
       }
@@ -293,6 +295,7 @@ export default {
       paintCell(newKey, 'is-snake', 'is-apple');
 
       if (growing) {
+        playSound('correctAnswer');
         applesEaten += 1;
         updateScoreDisplay();
         updateApplesDisplay();

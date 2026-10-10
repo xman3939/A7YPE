@@ -24,7 +24,11 @@ import wantedUrl from './assets/sounds/wanted.mp3?url';
 // setSoundEnabled() read/write.
 const SOUND_KEY = 'site-sound-effects-enabled';
 
+// mobile hides the options row (and with it the Sound Effects toggle),
+// so there'd be no way to ever turn sound on there — always on instead.
+// Same breakpoint as chrome.js's isDesktop().
 function getSoundEnabled() {
+  if (!window.matchMedia('(min-width: 769px)').matches) return true;
   return localStorage.getItem(SOUND_KEY) === 'true';
 }
 
@@ -87,6 +91,7 @@ function loadAll() {
 // later, the buffers are already there instead of each one waiting on
 // its own fetch the first time it's needed
 export function primeAudio() {
+  getContext(); // resumes it too, if a browser re-suspended it
   if (!loadPromise) loadPromise = loadAll();
   return loadPromise;
 }

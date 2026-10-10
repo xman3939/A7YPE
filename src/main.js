@@ -10,7 +10,11 @@ window.addEventListener('DOMContentLoaded', () => {
 // most browsers won't let an AudioContext actually produce sound until
 // it's created inside a real user gesture — primed on the very first
 // one, whatever it is, rather than waiting for a specific button
-window.addEventListener('pointerdown', primeAudio, { once: true });
+// iOS Safari only unlocks audio from certain gestures (touchend/click, not
+// always pointerdown), so all three try — cheap after the first success
+['pointerdown', 'touchend', 'click'].forEach(type => {
+  window.addEventListener(type, primeAudio, { passive: true });
+});
 
 // one delegated, document-level listener for the whole site rather than
 // something each page has to wire up itself — document itself is never
@@ -31,6 +35,9 @@ function isInGame() {
 }
 
 document.addEventListener('pointerover', e => {
+  // touch has no real hover — a tap fires pointerover too, which would
+  // play the hover blip on every tap
+  if (e.pointerType !== 'mouse') return;
   if (isInGame()) return;
   const target = e.target.closest(HOVER_SOUND_SELECTOR);
   if (!target || target === lastHoverTarget) return;

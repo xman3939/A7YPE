@@ -48,10 +48,12 @@ export function isSoundForcedOn() {
 
 function getSoundEnabled() {
   if (isSoundForcedOn()) return true;
+  // on by default — only an explicit "off" from the desktop toggle
+  // turns it off
   try {
-    return localStorage.getItem(SOUND_KEY) === 'true';
+    return localStorage.getItem(SOUND_KEY) !== 'false';
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -117,6 +119,11 @@ let loadPromise = null;
 // which would otherwise start "suspended" and silently do nothing
 function getContext() {
   if (!ctx) {
+    // iOS: 'ambient' sounds obey the ringer/silent switch and mix with
+    // whatever else is playing instead of pausing it — it's Safari's
+    // default for web audio anyway, set explicitly so it stays that way
+    // (Safari 16.4+; ignored where unsupported)
+    try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch {}
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = ctx.createGain();
     masterGain.gain.value = MASTER_VOLUME;

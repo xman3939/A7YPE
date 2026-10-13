@@ -119,11 +119,9 @@ let loadPromise = null;
 // which would otherwise start "suspended" and silently do nothing
 function getContext() {
   if (!ctx) {
-    // iOS: 'ambient' sounds obey the ringer/silent switch and mix with
-    // whatever else is playing instead of pausing it — it's Safari's
-    // default for web audio anyway, set explicitly so it stays that way
-    // (Safari 16.4+; ignored where unsupported)
-    try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch {}
+    // iOS: 'playback' plays even with the ringer/silent switch on (Safari's
+    // default, 'ambient', is muted by it). Safari 16.4+; ignored elsewhere.
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = ctx.createGain();
     masterGain.gain.value = MASTER_VOLUME;

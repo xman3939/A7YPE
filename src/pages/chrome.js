@@ -1,5 +1,5 @@
 import { fragmentElement, runReveal, WAVE, WAVE_SHORT } from '../text-reveal.js';
-import { playSound } from '../audio.js';
+import { playSound, isSoundForcedOn } from '../audio.js';
 
 const menuItems = [
   { label: 'A7', path: '/' },
@@ -20,6 +20,7 @@ const SOUND_KEY = 'site-sound-effects-enabled';
 const MUSIC_KEY = 'site-music-enabled';
 
 export function getSoundEnabled() {
+  if (isSoundForcedOn()) return true;
   const stored = localStorage.getItem(SOUND_KEY);
   return stored === null ? false : stored === 'true';
 }

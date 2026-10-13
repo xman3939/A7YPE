@@ -35,12 +35,24 @@ import wantedUrl from './assets/sounds/wanted.mp3?url';
 // setSoundEnabled() read/write.
 const SOUND_KEY = 'site-sound-effects-enabled';
 
-// mobile hides the options row (and with it the Sound Effects toggle),
-// so there'd be no way to ever turn sound on there — always on instead.
-// Same breakpoint as chrome.js's isDesktop().
+// phones/tablets always have sound effects on, regardless of the stored
+// preference — the mobile layout hides the Sound Effects toggle, so
+// there'd be no way to turn it on. Checked two ways: phone-width screens
+// (same breakpoint as chrome.js's isDesktop()), AND any touch-only device
+// whatever its width, since a phone in landscape or a tablet can be wider
+// than that breakpoint and would otherwise fall back to "disabled".
+export function isSoundForcedOn() {
+  return !window.matchMedia('(min-width: 769px)').matches
+    || window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+}
+
 function getSoundEnabled() {
-  if (!window.matchMedia('(min-width: 769px)').matches) return true;
-  return localStorage.getItem(SOUND_KEY) === 'true';
+  if (isSoundForcedOn()) return true;
+  try {
+    return localStorage.getItem(SOUND_KEY) === 'true';
+  } catch {
+    return false;
+  }
 }
 
 const SOUND_URLS = {
@@ -110,7 +122,8 @@ function getContext() {
     masterGain.gain.value = MASTER_VOLUME;
     masterGain.connect(ctx.destination);
   }
-  if (ctx.state === 'suspended') ctx.resume();
+  // iOS also uses 'interrupted' (after a call, Siri, or switching apps)
+  if (ctx.state !== 'running') ctx.resume().catch(() => {});
   return ctx;
 }
 

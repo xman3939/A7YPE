@@ -12,6 +12,7 @@ import countdownUrl from './assets/sounds/countdown.mp3?url';
 import correctAnswerUrl from './assets/sounds/correct-answer.mp3?url';
 import hoverClickableUrl from './assets/sounds/hover-clickable.mp3?url';
 import incorrectAnswerUrl from './assets/sounds/incorrect-answer.mp3?url';
+import menuButtonUrl from './assets/sounds/menu-button.mp3?url';
 import pressStartUrl from './assets/sounds/press-start.mp3?url';
 import pressStartSpotItUrl from './assets/sounds/press-start-spot-it.mp3?url';
 import settingOffUrl from './assets/sounds/setting-off.mp3?url';
@@ -63,6 +64,7 @@ const SOUND_URLS = {
   countdown: countdownUrl,
   hoverClickable: hoverClickableUrl,
   incorrectAnswer: incorrectAnswerUrl,
+  menuButton: menuButtonUrl,
   pressStart: pressStartUrl,
   pressStartSpotIt: pressStartSpotItUrl,
   settingOff: settingOffUrl,

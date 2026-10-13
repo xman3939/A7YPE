@@ -44,6 +44,32 @@ document.addEventListener('pointerover', e => {
   playSound('hoverClickable');
 });
 
+// the game menu buttons — "( ! )", "( ? )" etc. in the top bar, and the
+// same list in the mobile menu overlay (not the Menu button itself)
+const MENU_BUTTON_SELECTOR = '.topbar-action-btn, .menu-item';
+
+// touch has no hover, so on phones/tablets a tap gives the hover sound
+// instead. Start buttons are left out (they play their own start sound,
+// see game.js), as are the settings options (their own setting sounds)
+// and the menu buttons, which have their own sound too.
+// The pointer type is remembered from pointerdown, since not every
+// browser reports it on the click event itself.
+let lastPointerType = 'mouse';
+document.addEventListener('pointerdown', e => {
+  lastPointerType = e.pointerType;
+}, { capture: true, passive: true });
+
+document.addEventListener('click', e => {
+  if (e.target.closest(MENU_BUTTON_SELECTOR)) {
+    playSound('menuButton');
+    return;
+  }
+  if (lastPointerType === 'mouse') return;
+  const target = e.target.closest(HOVER_SOUND_SELECTOR);
+  if (!target || target.closest('.ready-start, .option') || isGameArea(target)) return;
+  playSound('hoverClickable');
+});
+
 document.addEventListener('pointerout', e => {
   // only actually left the hovered target once the pointer has moved to
   // somewhere outside it too — e.relatedTarget is null at the viewport's

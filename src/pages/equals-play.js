@@ -210,8 +210,13 @@ export default {
       timer.textContent = `:${String(secs).padStart(2, '0')}`;
     }
 
+    // each light has its own tone, numbered like a phone keypad: left to
+    // right, top to bottom (DOM order, see buildBoard) — 1-2 on the 1x2
+    // board, 1-4 on 2x2, 1-9 on 3x3. Plays for both the pattern playback
+    // and the player's own taps.
     function lightOn(i) {
       lights[i]?.classList.add('is-lit');
+      playSound(`simon${i + 1}`);
     }
 
     function lightOff(i) {

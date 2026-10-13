@@ -12,7 +12,18 @@ import countdownUrl from './assets/sounds/countdown.mp3?url';
 import correctAnswerUrl from './assets/sounds/correct-answer.mp3?url';
 import hoverClickableUrl from './assets/sounds/hover-clickable.mp3?url';
 import incorrectAnswerUrl from './assets/sounds/incorrect-answer.mp3?url';
+import pressStartUrl from './assets/sounds/press-start.mp3?url';
+import pressStartSpotItUrl from './assets/sounds/press-start-spot-it.mp3?url';
 import settingOffUrl from './assets/sounds/setting-off.mp3?url';
+import simon1Url from './assets/sounds/simon-1.mp3?url';
+import simon2Url from './assets/sounds/simon-2.mp3?url';
+import simon3Url from './assets/sounds/simon-3.mp3?url';
+import simon4Url from './assets/sounds/simon-4.mp3?url';
+import simon5Url from './assets/sounds/simon-5.mp3?url';
+import simon6Url from './assets/sounds/simon-6.mp3?url';
+import simon7Url from './assets/sounds/simon-7.mp3?url';
+import simon8Url from './assets/sounds/simon-8.mp3?url';
+import simon9Url from './assets/sounds/simon-9.mp3?url';
 import soundOnUrl from './assets/sounds/sound-on.mp3?url';
 import wantedUrl from './assets/sounds/wanted.mp3?url';
 
@@ -38,7 +49,18 @@ const SOUND_URLS = {
   countdown: countdownUrl,
   hoverClickable: hoverClickableUrl,
   incorrectAnswer: incorrectAnswerUrl,
+  pressStart: pressStartUrl,
+  pressStartSpotIt: pressStartSpotItUrl,
   settingOff: settingOffUrl,
+  simon1: simon1Url,
+  simon2: simon2Url,
+  simon3: simon3Url,
+  simon4: simon4Url,
+  simon5: simon5Url,
+  simon6: simon6Url,
+  simon7: simon7Url,
+  simon8: simon8Url,
+  simon9: simon9Url,
   soundOn: soundOnUrl,
   wanted: wantedUrl,
 };
@@ -57,6 +79,19 @@ const MASTER_VOLUME = 0.1;
 // plays constantly, so it sits well under everything else
 const SOUND_VOLUME = {
   hoverClickable: 0.3,
+  pressStart: 0.6,
+  pressStartSpotIt: 0.6,
+  // Simon's keypad tones — gameplay feedback heard on every single tap
+  // and every playback step, so kept soft
+  simon1: 0.4,
+  simon2: 0.4,
+  simon3: 0.4,
+  simon4: 0.4,
+  simon5: 0.4,
+  simon6: 0.4,
+  simon7: 0.4,
+  simon8: 0.4,
+  simon9: 0.4,
 };
 
 let ctx = null;

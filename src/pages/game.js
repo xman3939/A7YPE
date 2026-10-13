@@ -1,4 +1,5 @@
 import { renderChrome, initChrome, roll, isDesktop } from './chrome.js';
+import { playSound } from '../audio.js';
 import { fragmentElement, runReveal, WAVE, WAVE_LONG } from '../text-reveal.js';
 import exclaimSvg from '../assets/symbols/exclaim.svg?raw';
 import questionSvg from '../assets/symbols/question.svg?raw';
@@ -160,6 +161,13 @@ export function createGamePage(mark, { description = DEFAULT_DESC, stats = DEFAU
 
       if (desc) fragmentElement(desc);
       if (descSide) fragmentElement(descSide);
+
+      // the actual navigation is router.js's global [data-route] click
+      // handler — this only adds the sound on top. Spot It ("?") has its
+      // own start sound.
+      document.querySelector('.ready-start')?.addEventListener('click', () => {
+        playSound(mark === '?' ? 'pressStartSpotIt' : 'pressStart');
+      });
       // headerMark is an SVG now, not text — fragmentElement() reads
       // el.childNodes expecting text content, and an SVG's textContent is
       // empty, so it was overwriting the SVG with an empty string. It gets

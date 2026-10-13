@@ -28,34 +28,49 @@ import simon9Url from './assets/sounds/simon-9.mp3?url';
 import soundOnUrl from './assets/sounds/sound-on.mp3?url';
 import wantedUrl from './assets/sounds/wanted.mp3?url';
 
-// reads the sound-enabled preference straight from localStorage rather
-// than importing getSoundEnabled from chrome.js — chrome.js needs to
-// call playSound() too (the Sound Effects toggle's own confirmation
-// chime, the settings-adjusted chime), which would make that import
-// circular. Same key chrome.js's own getSoundEnabled()/
-// setSoundEnabled() read/write.
-const SOUND_KEY = 'site-sound-effects-enabled';
+// Sound Effects volume levels — chosen on desktop by clicking the Sound
+// Effects option, which cycles through these in order (chrome.js). Each
+// value is the master volume every effect plays at; 'default' is the
+// level the site has been tuned at.
+export const SOUND_LEVELS = [
+  { key: 'disabled', label: 'Disabled', volume: 0 },
+  { key: 'very-low', label: 'Very Low', volume: 0.03 },
+  { key: 'low', label: 'Low', volume: 0.06 },
+  { key: 'default', label: 'Default', volume: 0.1 },
+  { key: 'high', label: 'High', volume: 0.18 },
+  { key: 'maximum', label: 'Maximum', volume: 0.3 },
+];
+const DEFAULT_LEVEL = SOUND_LEVELS.find(l => l.key === 'default');
 
-// phones/tablets always have sound effects on, regardless of the stored
-// preference — the mobile layout hides the Sound Effects toggle, so
-// there'd be no way to turn it on. Checked two ways: phone-width screens
-// (same breakpoint as chrome.js's isDesktop()), AND any touch-only device
-// whatever its width, since a phone in landscape or a tablet can be wider
-// than that breakpoint and would otherwise fall back to "disabled".
-export function isSoundForcedOn() {
+const LEVEL_KEY = 'site-sound-effects-level';
+// the old on/off toggle's key — an explicit "off" there carries over as
+// Disabled instead of silently switching that visitor's sound back on
+const LEGACY_KEY = 'site-sound-effects-enabled';
+
+// phones/tablets never get Disabled — the mobile layout hides the Sound
+// Effects option, so there'd be no way to turn it back on. Checked two
+// ways: phone-width screens (same breakpoint as chrome.js's isDesktop()),
+// AND any touch-only device whatever its width, since a phone in
+// landscape or a tablet can be wider than that breakpoint.
+function isSoundForcedOn() {
   return !window.matchMedia('(min-width: 769px)').matches
     || window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 }
 
-function getSoundEnabled() {
-  if (isSoundForcedOn()) return true;
-  // on by default — only an explicit "off" from the desktop toggle
-  // turns it off
+export function getSoundLevel() {
+  let level = null;
   try {
-    return localStorage.getItem(SOUND_KEY) !== 'false';
-  } catch {
-    return true;
-  }
+    const stored = localStorage.getItem(LEVEL_KEY);
+    level = SOUND_LEVELS.find(l => l.key === stored) ?? null;
+    if (!level && localStorage.getItem(LEGACY_KEY) === 'false') level = SOUND_LEVELS[0];
+  } catch {}
+  level ??= DEFAULT_LEVEL;
+  if (level.volume === 0 && isSoundForcedOn()) return DEFAULT_LEVEL;
+  return level;
+}
+
+export function setSoundLevel(key) {
+  try { localStorage.setItem(LEVEL_KEY, key); } catch {}
 }
 
 const SOUND_URLS = {
@@ -87,14 +102,11 @@ const SOUND_URLS = {
 const EXCLUSIVE = new Set(['hoverClickable', 'countdown', 'wanted']);
 const playing = {};
 
-// master volume for every effect — the raw files are mixed loud, and
-// these sit under constant hovering/clicking, so they're kept well back
-const MASTER_VOLUME = 0.1;
-
-// per-sound trims on top of MASTER_VOLUME (1 = unchanged) — the hover
+// per-sound trims on top of the Sound Effects level (1 = unchanged) — the hover
 // plays constantly, so it sits well under everything else
 const SOUND_VOLUME = {
   hoverClickable: 0.3,
+  menuButton: 0.35,
   pressStart: 0.6,
   pressStartSpotIt: 0.6,
   // Simon's keypad tones — gameplay feedback heard on every single tap
@@ -126,7 +138,6 @@ function getContext() {
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = ctx.createGain();
-    masterGain.gain.value = MASTER_VOLUME;
     masterGain.connect(ctx.destination);
   }
   // iOS also uses 'interrupted' (after a call, Siri, or switching apps)
@@ -157,14 +168,19 @@ export function primeAudio() {
   return loadPromise;
 }
 
-// { force: true } plays even with sound effects disabled — only for the
-// Sound Effects toggle's own "switched off" confirmation, which by
-// definition happens right after sound was turned off
+// { force: true } plays even with sound effects disabled (at the Default
+// level) — only for the Sound Effects option's own "switched off"
+// confirmation, which by definition happens right after sound went off
 export function playSound(name, { force = false } = {}) {
-  if (!force && !getSoundEnabled()) return;
+  let { volume: levelVolume } = getSoundLevel();
+  if (levelVolume === 0) {
+    if (!force) return;
+    levelVolume = DEFAULT_LEVEL.volume;
+  }
   const buffer = buffers[name];
   if (!buffer) return; // not decoded yet — skip rather than queue/delay
   const context = getContext();
+  masterGain.gain.value = levelVolume;
   const source = context.createBufferSource();
   source.buffer = buffer;
   const volume = SOUND_VOLUME[name] ?? 1;

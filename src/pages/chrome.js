@@ -1,5 +1,5 @@
 import { fragmentElement, runReveal, WAVE, WAVE_SHORT } from '../text-reveal.js';
-import { playSound, isSoundForcedOn } from '../audio.js';
+import { playSound, getSoundLevel, setSoundLevel, SOUND_LEVELS } from '../audio.js';
 
 const menuItems = [
   { label: 'A7', path: '/' },
@@ -12,22 +12,10 @@ const menuItems = [
 const MENU_ITEM_START = 200;
 const MENU_ITEM_GAP = 120;
 
-// Sound Effects is a real toggle now (src/audio.js reads this directly)
-// — defaults to Disabled for new visitors rather than opting everyone
-// into audio they didn't ask for. Music still has no actual track to
-// play, so it stays locked/non-clickable below, same as before.
-const SOUND_KEY = 'site-sound-effects-enabled';
+// Sound Effects' volume level lives in src/audio.js (getSoundLevel/
+// setSoundLevel), since playSound() reads it on every play. Music still
+// has no actual track to play, so it stays locked/non-clickable below.
 const MUSIC_KEY = 'site-music-enabled';
-
-export function getSoundEnabled() {
-  if (isSoundForcedOn()) return true;
-  const stored = localStorage.getItem(SOUND_KEY);
-  return stored === null ? true : stored === 'true';
-}
-
-function setSoundEnabled(value) {
-  localStorage.setItem(SOUND_KEY, String(value));
-}
 
 function getMusicEnabled() {
   const stored = localStorage.getItem(MUSIC_KEY);
@@ -111,7 +99,7 @@ export function renderChrome(innerHTML, footerHTML) {
       ${footerHTML ?? `
         <footer class="infobar">
           <div class="options-row">
-            <button type="button" class="option option--toggle" data-option="sound"><span class="option-label">${roll('Sound Effects:')}</span><span class="option-value">${roll(getSoundEnabled() ? 'Enabled' : 'Disabled')}</span></button>
+            <button type="button" class="option option--toggle" data-option="sound"><span class="option-label">${roll('Sound Effects:')}</span><span class="option-value">${roll(getSoundLevel().label)}</span></button>
             <button type="button" class="option option--toggle is-locked" data-option="music" aria-disabled="true" title="Currently unavailable"><span class="option-label">${roll('Music:')}</span><span class="option-value">${roll('Disabled')}</span></button>
             <button type="button" class="option option--toggle" data-option="fullscreen"><span class="option-label">${roll('Fullscreen:')}</span><span class="option-value">${roll(isFullscreenActive() ? 'Enabled' : 'Disabled')}</span></button>
             <button type="button" class="option option--toggle" data-option="cursor"><span class="option-label">${roll('Cursor:')}</span><span class="option-value">${roll(getCursorStyle() === 'arrow' ? 'Arrow' : 'Crosshair')}</span></button>
@@ -201,12 +189,18 @@ export function initChrome({ instant = false } = {}) {
 
   const soundOption = document.querySelector('[data-option="sound"]');
   soundOption?.addEventListener('click', () => {
-    setSoundEnabled(!getSoundEnabled());
-    setOptionValueText(soundOption, getSoundEnabled() ? 'Enabled' : 'Disabled');
-    // turning ON plays the confirmation chime; turning OFF plays the
-    // switched-off sound one last time (forced, since sound is now off)
-    if (getSoundEnabled()) playSound('soundOn');
-    else playSound('settingOff', { force: true });
+    // cycles Disabled → Very Low → … → Maximum → Disabled
+    const current = SOUND_LEVELS.indexOf(getSoundLevel());
+    const next = SOUND_LEVELS[(current + 1) % SOUND_LEVELS.length];
+    setSoundLevel(next.key);
+    setOptionValueText(soundOption, getSoundLevel().label);
+    // coming out of Disabled plays the switched-on chime; each step up
+    // plays the adjust sound at the new level, so you hear what you
+    // picked; dropping to Disabled plays the switched-off sound one last
+    // time (forced, since sound is now off)
+    if (next.volume === 0) playSound('settingOff', { force: true });
+    else if (current === 0) playSound('soundOn');
+    else playSound('adjustSetting');
   });
 
   const fullscreenOption = document.querySelector('[data-option="fullscreen"]');

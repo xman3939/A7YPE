@@ -22,7 +22,7 @@ const MUSIC_KEY = 'site-music-enabled';
 export function getSoundEnabled() {
   if (isSoundForcedOn()) return true;
   const stored = localStorage.getItem(SOUND_KEY);
-  return stored === null ? false : stored === 'true';
+  return stored === null ? true : stored === 'true';
 }
 
 function setSoundEnabled(value) {

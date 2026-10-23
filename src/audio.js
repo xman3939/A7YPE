@@ -25,6 +25,9 @@ import simon6Url from './assets/sounds/simon-6.mp3?url';
 import simon7Url from './assets/sounds/simon-7.mp3?url';
 import simon8Url from './assets/sounds/simon-8.mp3?url';
 import simon9Url from './assets/sounds/simon-9.mp3?url';
+import snakeCrashUrl from './assets/sounds/snake-crash.mp3?url';
+import snakeDealUrl from './assets/sounds/snake-deal.mp3?url';
+import snakeEatUrl from './assets/sounds/snake-eat.mp3?url';
 import soundOnUrl from './assets/sounds/sound-on.mp3?url';
 import wantedUrl from './assets/sounds/wanted.mp3?url';
 
@@ -92,6 +95,9 @@ const SOUND_URLS = {
   simon7: simon7Url,
   simon8: simon8Url,
   simon9: simon9Url,
+  snakeCrash: snakeCrashUrl,
+  snakeDeal: snakeDealUrl,
+  snakeEat: snakeEatUrl,
   soundOn: soundOnUrl,
   wanted: wantedUrl,
 };
@@ -99,7 +105,7 @@ const SOUND_URLS = {
 // sounds that only ever play one at a time — a new trigger cuts off the
 // previous instance instead of layering on top (sweeping across several
 // buttons, or a retry restarting the countdown mid-play)
-const EXCLUSIVE = new Set(['hoverClickable', 'countdown', 'wanted']);
+const EXCLUSIVE = new Set(['hoverClickable', 'countdown', 'wanted', 'snakeDeal']);
 const playing = {};
 
 // per-sound trims on top of the Sound Effects level (1 = unchanged) — the hover

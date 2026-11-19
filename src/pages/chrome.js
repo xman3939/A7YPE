@@ -1,5 +1,5 @@
 import { fragmentElement, runReveal, WAVE, WAVE_SHORT } from '../text-reveal.js';
-import { playSound, getSoundLevel, setSoundLevel, SOUND_LEVELS } from '../audio.js';
+import { playSound, getSoundLevel, setSoundLevel, getMusicLevel, setMusicLevel, SOUND_LEVELS } from '../audio.js';
 
 const menuItems = [
   { label: 'A7', path: '/' },
@@ -12,19 +12,8 @@ const menuItems = [
 const MENU_ITEM_START = 200;
 const MENU_ITEM_GAP = 120;
 
-// Sound Effects' volume level lives in src/audio.js (getSoundLevel/
-// setSoundLevel), since playSound() reads it on every play. Music still
-// has no actual track to play, so it stays locked/non-clickable below.
-const MUSIC_KEY = 'site-music-enabled';
-
-function getMusicEnabled() {
-  const stored = localStorage.getItem(MUSIC_KEY);
-  return stored === null ? false : stored === 'true';
-}
-
-function setMusicEnabled(value) {
-  localStorage.setItem(MUSIC_KEY, String(value));
-}
+// Sound Effects' and Music's volume levels live in src/audio.js
+// (get/setSoundLevel, get/setMusicLevel), since playback reads them.
 
 function isFullscreenActive() {
   return !!document.fullscreenElement;
@@ -100,7 +89,7 @@ export function renderChrome(innerHTML, footerHTML) {
         <footer class="infobar">
           <div class="options-row">
             <button type="button" class="option option--toggle" data-option="sound"><span class="option-label">${roll('Sound Effects:')}</span><span class="option-value">${roll(getSoundLevel().label)}</span></button>
-            <button type="button" class="option option--toggle is-locked" data-option="music" aria-disabled="true" title="Currently unavailable"><span class="option-label">${roll('Music:')}</span><span class="option-value">${roll('Disabled')}</span></button>
+            <button type="button" class="option option--toggle" data-option="music"><span class="option-label">${roll('Music:')}</span><span class="option-value">${roll(getMusicLevel().label)}</span></button>
             <button type="button" class="option option--toggle" data-option="fullscreen"><span class="option-label">${roll('Fullscreen:')}</span><span class="option-value">${roll(isFullscreenActive() ? 'Enabled' : 'Disabled')}</span></button>
             <button type="button" class="option option--toggle" data-option="cursor"><span class="option-label">${roll('Cursor:')}</span><span class="option-value">${roll(getCursorStyle() === 'arrow' ? 'Arrow' : 'Crosshair')}</span></button>
           </div>
@@ -183,9 +172,18 @@ export function initChrome({ instant = false } = {}) {
     });
   }
 
-  // Music is still locked to Disabled (no actual track to play yet) —
-  // deliberately no click listener, so it's inert; the hover still
-  // works (see roll()'s hoverText above), just doesn't lead anywhere.
+  // same six levels as Sound Effects, cycled the same way — the sounds
+  // here are effects, so they play at the Sound Effects level
+  const musicOption = document.querySelector('[data-option="music"]');
+  musicOption?.addEventListener('click', () => {
+    const current = SOUND_LEVELS.indexOf(getMusicLevel());
+    const next = SOUND_LEVELS[(current + 1) % SOUND_LEVELS.length];
+    setMusicLevel(next.key);
+    setOptionValueText(musicOption, getMusicLevel().label);
+    if (next.volume === 0) playSound('settingOff');
+    else if (current === 0) playSound('soundOn');
+    else playSound('adjustSetting');
+  });
 
   const soundOption = document.querySelector('[data-option="sound"]');
   soundOption?.addEventListener('click', () => {

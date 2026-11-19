@@ -77,6 +77,27 @@ export function setSoundLevel(key) {
   try { localStorage.setItem(LEVEL_KEY, key); } catch {}
 }
 
+// Music has its own level, same six steps as Sound Effects (its own
+// option in chrome.js), defaulting to Default. Same touch-device rule:
+// no option to change it there, so never Disabled.
+const MUSIC_LEVEL_KEY = 'site-music-level';
+
+export function getMusicLevel() {
+  let level = null;
+  try {
+    level = SOUND_LEVELS.find(l => l.key === localStorage.getItem(MUSIC_LEVEL_KEY)) ?? null;
+  } catch {}
+  level ??= DEFAULT_LEVEL;
+  if (level.volume === 0 && isSoundForcedOn()) return DEFAULT_LEVEL;
+  return level;
+}
+
+// applies straight away to any track already playing
+export function setMusicLevel(key) {
+  try { localStorage.setItem(MUSIC_LEVEL_KEY, key); } catch {}
+  if (music) music.gain.gain.value = getMusicLevel().volume * MUSIC_VOLUME;
+}
+
 const SOUND_URLS = {
   adjustSetting: adjustSettingUrl,
   correctAnswer: correctAnswerUrl,
@@ -211,13 +232,12 @@ export function playSound(name, { force = false } = {}) {
 // Game music is a single looping track, loaded separately from the effects
 // above: the files are big (minutes long), so they're only fetched when a
 // page that uses one asks for it (preloadMusic) instead of on every
-// visitor's first click. There's no working Music option yet (it's still
-// locked in chrome.js), so music follows the Sound Effects level for now —
-// Disabled silences it too.
+// visitor's first click. Volume follows the Music level (getMusicLevel),
+// independent of Sound Effects.
 const MUSIC_URLS = {
   snake: snakeMusicUrl,
 };
-const MUSIC_VOLUME = 0.5; // relative to the Sound Effects level
+const MUSIC_VOLUME = 0.5; // relative to the Music level's volume
 
 const musicBuffers = {};
 const musicLoads = {};
@@ -244,8 +264,7 @@ export function playMusic(name) {
   const request = ++musicRequest;
   preloadMusic(name).then(() => {
     if (request !== musicRequest || !musicBuffers[name]) return;
-    const levelVolume = getSoundLevel().volume;
-    if (levelVolume === 0) return;
+    const levelVolume = getMusicLevel().volume;
     const context = getContext();
     const source = context.createBufferSource();
     source.buffer = musicBuffers[name];

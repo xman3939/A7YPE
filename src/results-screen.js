@@ -247,7 +247,11 @@ function fitResultsNumbers(playEl) {
     });
 
     if (isDesktop()) {
-      const availW = el.clientWidth;
+      // measured from the ROW, not the number itself — the number is
+      // sized to its own digits, so its width only reflects whatever
+      // size it was last set to. Measuring it meant a window that grew
+      // back after shrinking kept "fitting" the old, smaller size.
+      const availW = desktopNumberAvailWidth(el);
       const aspectSum = aspects.reduce((a, b) => a + b, 0);
       const gapCount = digitEls.length - 1;
       // the height that would make the row exactly fill availW at the
@@ -305,6 +309,16 @@ function fitResultsNumbers(playEl) {
   });
 
   if (isDesktop()) shrinkDesktopNumbersToFit(results, nums);
+}
+
+// the width a desktop number can take: its grid row's inner width minus
+// the label beside it and the gap between them
+function desktopNumberAvailWidth(el) {
+  const inner = el.closest('.results-grid-inner');
+  if (!inner) return el.clientWidth;
+  const label = inner.querySelector('.results-grid-label');
+  const gap = parseFloat(getComputedStyle(inner).columnGap) || 0;
+  return inner.clientWidth - (label?.offsetWidth ?? 0) - gap;
 }
 
 // at the fixed 300px, both numbers plus the stat rows need ~800px, more

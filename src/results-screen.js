@@ -205,6 +205,9 @@ function buildMarkup(data) {
 // what an earlier "desktop isn't scaling" bug looked like.
 const DESKTOP_HEIGHT = 300;
 const DESKTOP_GAP = 4;
+// the smallest the desktop numbers shrink to on a short window; below
+// this .results scrolls instead (see style.css)
+const DESKTOP_MIN_HEIGHT = 72;
 // Overview's 4 stat entries (label+value stacked, 19px each, 3px gap,
 // 3px inner padding top/bottom = ~47px per entry) plus its own top
 // padding — a fixed estimate rather than a live measurement, since at
@@ -261,6 +264,7 @@ function fitResultsNumbers(playEl) {
       });
       el.style.gap = `${DESKTOP_GAP}px`;
       el.style.flex = '';
+      el._desktopFit = { digitEls, svgs, aspects, digitHeight };
       return;
     }
 
@@ -298,6 +302,33 @@ function fitResultsNumbers(playEl) {
     });
     el.style.gap = `${digitHeight * DIGIT_GAP_RATIO}px`;
     el.style.flex = `0 0 ${height}px`;
+  });
+
+  if (isDesktop()) shrinkDesktopNumbersToFit(results, nums);
+}
+
+// at the fixed 300px, both numbers plus the stat rows need ~800px, more
+// than a short desktop window (or a laptop with browser chrome) leaves
+// between the nav and footer — and .results is bottom-anchored with
+// overflow hidden, so the heading row and the top of Score were simply
+// cut off. Each number's row is exactly its digits' height plus fixed
+// padding, so shrinking both digits by half the measured overflow makes
+// the grid fit exactly.
+function shrinkDesktopNumbersToFit(results, nums) {
+  const grid = results?.querySelector('.results-grid');
+  if (!grid || !results.clientHeight) return;
+  const overflow = grid.offsetHeight - results.clientHeight;
+  if (overflow <= 0) return;
+  const fits = [...nums].map(el => el._desktopFit).filter(Boolean);
+  if (!fits.length) return;
+  const shrinkBy = Math.ceil(overflow / fits.length) + 2;
+  fits.forEach(({ digitEls, svgs, aspects, digitHeight }) => {
+    const h = Math.max(digitHeight - shrinkBy, DESKTOP_MIN_HEIGHT);
+    digitEls.forEach((d, i) => {
+      d.style.height = `${h}px`;
+      svgs[i].style.height = `${h}px`;
+      svgs[i].style.width = `${h * aspects[i]}px`;
+    });
   });
 }
 

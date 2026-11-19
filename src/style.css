@@ -1868,6 +1868,19 @@ body.page-question-play .play-item {
    same right-aligned values, everything bottom-aligned to its own rule
    — Score/Attempt No. just have a much bigger value than the others. */
 @media (min-width: 769px) {
+  /* last resort for very short windows, once the big numbers have
+     already shrunk as far as fitResultsNumbers() lets them: scroll
+     (no visible scrollbar, same as /info) rather than cut rows off */
+  .results {
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .results::-webkit-scrollbar {
+    display: none;
+  }
+
   .results-grid {
     list-style: none;
     width: 100%;

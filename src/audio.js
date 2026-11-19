@@ -27,6 +27,7 @@ import simon8Url from './assets/sounds/simon-8.mp3?url';
 import simon9Url from './assets/sounds/simon-9.mp3?url';
 import snakeCrashUrl from './assets/sounds/snake-crash.mp3?url';
 import snakeDealUrl from './assets/sounds/snake-deal.mp3?url';
+import snakeMusicUrl from './assets/sounds/snake-music.mp3?url';
 import snakeEatUrl from './assets/sounds/snake-eat.mp3?url';
 import soundOnUrl from './assets/sounds/sound-on.mp3?url';
 import wantedUrl from './assets/sounds/wanted.mp3?url';
@@ -205,3 +206,76 @@ export function playSound(name, { force = false } = {}) {
   }
   source.start(0);
 }
+
+// ---- music ----------------------------------------------------------
+// Game music is a single looping track, loaded separately from the effects
+// above: the files are big (minutes long), so they're only fetched when a
+// page that uses one asks for it (preloadMusic) instead of on every
+// visitor's first click. There's no working Music option yet (it's still
+// locked in chrome.js), so music follows the Sound Effects level for now —
+// Disabled silences it too.
+const MUSIC_URLS = {
+  snake: snakeMusicUrl,
+};
+const MUSIC_VOLUME = 0.5; // relative to the Sound Effects level
+
+const musicBuffers = {};
+const musicLoads = {};
+let music = null; // { source, gain }
+
+export function preloadMusic(name) {
+  if (!musicLoads[name]) {
+    const context = getContext();
+    musicLoads[name] = fetch(MUSIC_URLS[name])
+      .then(res => res.arrayBuffer())
+      .then(data => context.decodeAudioData(data))
+      .then(buffer => { musicBuffers[name] = buffer; })
+      .catch(() => { delete musicLoads[name]; });
+  }
+  return musicLoads[name];
+}
+
+// starts the track from the top, looping until stopMusic(). If it hasn't
+// finished loading yet it starts as soon as it has — unless stopMusic()
+// (or another playMusic()) has been called in the meantime.
+let musicRequest = 0;
+export function playMusic(name) {
+  stopMusic();
+  const request = ++musicRequest;
+  preloadMusic(name).then(() => {
+    if (request !== musicRequest || !musicBuffers[name]) return;
+    const levelVolume = getSoundLevel().volume;
+    if (levelVolume === 0) return;
+    const context = getContext();
+    const source = context.createBufferSource();
+    source.buffer = musicBuffers[name];
+    source.loop = true;
+    const gain = context.createGain();
+    gain.gain.value = levelVolume * MUSIC_VOLUME;
+    source.connect(gain);
+    gain.connect(context.destination);
+    source.start(0);
+    music = { source, gain };
+  });
+}
+
+// quick fade rather than a hard cut, which can click
+export function stopMusic(fadeMs = 300) {
+  musicRequest++;
+  if (!music) return;
+  const { source, gain } = music;
+  music = null;
+  const now = ctx.currentTime;
+  gain.gain.cancelScheduledValues(now);
+  gain.gain.setValueAtTime(gain.gain.value, now);
+  gain.gain.linearRampToValueAtTime(0, now + fadeMs / 1000);
+  try { source.stop(now + fadeMs / 1000); } catch {}
+}
+
+// the game pauses while its tab is hidden (requestAnimationFrame stops),
+// so the music pauses with it rather than playing on in the background
+document.addEventListener('visibilitychange', () => {
+  if (!ctx || !music) return;
+  if (document.hidden) ctx.suspend().catch(() => {});
+  else ctx.resume().catch(() => {});
+});

@@ -1,5 +1,5 @@
 import { renderChrome, initChrome } from './chrome.js';
-import { playSound } from '../audio.js';
+import { playSound, preloadMusic, playMusic, stopMusic } from '../audio.js';
 import { fragmentElement, runReveal, WAVE } from '../text-reveal.js';
 import { showResultsScreen } from '../results-screen.js';
 import { GRID_SIZE, MAX_APPLES, DIRECTIONS, isOpposite, cellKey, createInitialSnake, getTickMs, spawnApple, scoreForApples } from '../game-hashtag.js';
@@ -111,6 +111,9 @@ export default {
     `;
   },
   init() {
+    // fetched while the intro/countdown plays, so it is ready by the time
+    // the snake starts moving
+    preloadMusic('snake');
     const { revealNav, teaseLogo, drawFooterRule, revealFooter } = initChrome();
 
     const page = document.querySelector('.page');
@@ -331,8 +334,11 @@ export default {
       }
     }
 
+    // the music starts with the snake itself (after the countdown and
+    // deal), and stops on game over/win, retry, or leaving the page
     function startLoop() {
       stopLoop();
+      playMusic('snake');
       lastTickAt = performance.now();
       tickHandle = requestAnimationFrame(loopFrame);
     }
@@ -345,6 +351,7 @@ export default {
     function showResults(label) {
       gameOver = true;
       stopLoop();
+      stopMusic();
       const timePlayed = (Date.now() - sessionStartMs) / 1000;
       // what fraction of your moves actually landed an apple — a direct
       // read on how optimal the routing was, not just whether you
@@ -427,6 +434,7 @@ export default {
     }
 
     function retry() {
+      stopMusic();
       attemptNo += 1;
       rebuildPlayArea();
       resetSessionState();
@@ -526,6 +534,7 @@ export default {
 
     this._cleanupHashtag = () => {
       stopLoop();
+      stopMusic();
       if (dealRaf) cancelAnimationFrame(dealRaf);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', onResize);
